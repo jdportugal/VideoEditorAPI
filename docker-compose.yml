@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  video-editor-api:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - PYTHONPATH=/app
+    volumes:
+      - ./temp:/app/temp
+      - ./uploads:/app/uploads
+      - ./jobs:/app/jobs
+      - ./static:/app/static
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  temp_data:
+  uploads_data:
+  jobs_data:
+  static_data:

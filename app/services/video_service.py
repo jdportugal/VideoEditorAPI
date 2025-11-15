@@ -124,7 +124,6 @@ class VideoService:
         position = settings.get("position", "center-center")
         h_align, v_align = position_map.get(position, ("center", "center"))
         
-        print(f"📋 Position requested: '{position}' -> h_align='{h_align}', v_align='{v_align}'")
         
         # Create base text clip
         font_requested = settings.get("font-family", "DejaVu-Sans-Bold")
@@ -132,12 +131,8 @@ class VideoService:
         # Use full path for Luckiest Guy to ensure it's found
         if font_requested == "Luckiest Guy":
             font_path = "/usr/share/fonts/truetype/luckiest-guy/LuckiestGuy-Regular.ttf"
-            print(f"🔤 FONT DEBUG: Using full path for Luckiest Guy: '{font_path}'")
             font_requested = font_path
         
-        print(f"🔤 FONT DEBUG: Final font: '{font_requested}'")
-        print(f"🔤 FONT DEBUG: Text: '{text}'")
-        print(f"🔤 FONT DEBUG: Method: {'caption' if len(text) > 50 else 'label'}")
         
         txt_clip = TextClip(
             text,
@@ -155,15 +150,12 @@ class VideoService:
             x_pos = 'center'
             y_pos = video_size[1] // 2  # Exact vertical center in pixels
             txt_clip = txt_clip.set_position((x_pos, y_pos))
-            print(f"🎯 Setting subtitle to TRUE CENTER: x='center', y={y_pos} (video height: {video_size[1]})")
             
         elif h_align == "center" and v_align == "bottom":
             txt_clip = txt_clip.set_position(('center', video_size[1] - 150))
-            print(f"🔻 Setting subtitle to BOTTOM: x='center', y={video_size[1] - 150}")
             
         elif h_align == "center" and v_align == "top":
             txt_clip = txt_clip.set_position(('center', 50))
-            print(f"🔺 Setting subtitle to TOP: x='center', y=50")
             
         else:
             # Handle other positions
@@ -178,8 +170,9 @@ class VideoService:
         """Create karaoke-style subtitle clips with word highlighting."""
         clips = []
         
-        highlight_color = settings.get("highlight_color", "#FFFF00")
-        normal_color = settings.get("line-color", "#FFFFFF")
+        # Use normal-color for both highlighting and normal text
+        highlight_color = settings.get("normal-color", "#FFFFFF")
+        normal_color = settings.get("normal-color", "#FFFFFF")
         
         print(f"🎤 Creating karaoke clips for {len(subtitles)} segments")
         
@@ -212,8 +205,8 @@ class VideoService:
                         {
                             **settings, 
                             "line-color": highlight_color,
-                            "stroke_width": settings.get("stroke_width", 3) + 2,  # Thicker stroke for visibility
-                            "font-size": settings.get("font-size", 100) + 5  # Slightly larger for emphasis
+                            "outline-width": settings.get("outline-width", 10) + 3,  # Thicker outline for highlighting
+                            "font-size": settings.get("font-size", 120) + 10  # Slightly larger for emphasis
                         },
                         duration=word["end"] - word["start"]
                     ).set_start(word["start"])

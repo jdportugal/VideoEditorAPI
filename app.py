@@ -6,6 +6,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 import json
 from datetime import datetime
+import re
 
 from app.services.video_service import VideoService
 from app.services.subtitle_service import SubtitleService
@@ -22,6 +23,42 @@ job_manager = JobManager()
 
 # Thread pool for async processing
 executor = ThreadPoolExecutor(max_workers=4)
+
+def parse_time_to_seconds(time_input):
+    """
+    Convert time format to seconds.
+    Supports:
+    - Numeric seconds: 5.5 or "5.5"
+    - SRT format: "00:00:05,500" or "00:00:05.500"
+    - Simple format: "05.5"
+    """
+    if isinstance(time_input, (int, float)):
+        return float(time_input)
+    
+    if isinstance(time_input, str):
+        # Try to parse as float first
+        try:
+            return float(time_input)
+        except ValueError:
+            pass
+        
+        # Parse SRT time format: HH:MM:SS,mmm or HH:MM:SS.mmm
+        time_pattern = r'(\d{1,2}):(\d{1,2}):(\d{1,2})[,.](\d{3})'
+        match = re.match(time_pattern, time_input.strip())
+        
+        if match:
+            hours = int(match.group(1))
+            minutes = int(match.group(2))
+            seconds = int(match.group(3))
+            milliseconds = int(match.group(4))
+            
+            total_seconds = hours * 3600 + minutes * 60 + seconds + milliseconds / 1000.0
+            return total_seconds
+        
+        # If no pattern matches, raise an error
+        raise ValueError(f"Invalid time format: {time_input}")
+    
+    raise ValueError(f"Unsupported time type: {type(time_input)}")
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -42,37 +79,26 @@ def add_subtitles():
         # Create job ID
         job_id = str(uuid.uuid4())
         
-        # Default settings
+        # Default settings (simplified)
         default_settings = {
             "language": "en",
-            "return_subtitles_file": False,
-            "timing_offset": 0.0,  # Timing adjustment in seconds
-            "word_level_mode": "off",  # "off", "karaoke", "popup", "typewriter"
-            "word_level_settings": {
-                "highlight_color": "#FFFF00",  # Yellow highlight for karaoke
-                "normal_color": "#FFFFFF",     # White text
-                "fade_color": "#CCCCCC",       # Gray for faded words
-                "animation_duration": 0.1,     # Transition time between words
-                "words_context": 3             # How many words to show around current
-            },
+            "return_subtitles_file": True,  # Always return subtitle files
+            "word_level_mode": "karaoke",   # Default to karaoke mode
             "settings": {
-                "style": "classic",
-                "box-color": "#000000",
+                "font-size": 120,
+                "font-family": "Luckiest Guy",
+                "line-color": "#FFF4E9", 
                 "outline-width": 10,
-                "word-color": "#002F6C",
-                "shadow-offset": 0,
-                "shadow-color": "#000000",
-                "max-words-per-line": 4,
-                "font-size": 100,
-                "font-family": "Luckiest Guy", 
-                "position": "center-center",
-                "outline-color": "#000000",
-                "line-color": "#FFF4E9"
+                "normal-color": "#FFFFFF"      # Used for both normal and highlighting
             }
         }
         
-        # Merge with provided settings
+        # Merge with provided settings  
         settings = {**default_settings, **data}
+        
+        # Merge nested settings properly
+        if "settings" in data:
+            settings["settings"] = {**default_settings["settings"], **data["settings"]}
         
         # Start async processing
         job_manager.create_job(job_id, "add_subtitles", "pending", settings)
@@ -98,12 +124,33 @@ def split_video():
             if field not in data:
                 return jsonify({"error": f"Missing required field: {field}"}), 400
         
+        # Parse and validate time formats
+        try:
+            start_seconds = parse_time_to_seconds(data['start_time'])
+            end_seconds = parse_time_to_seconds(data['end_time'])
+            
+            if start_seconds >= end_seconds:
+                return jsonify({"error": "Start time must be less than end time"}), 400
+            
+            if start_seconds < 0:
+                return jsonify({"error": "Start time cannot be negative"}), 400
+                
+        except ValueError as e:
+            return jsonify({"error": f"Invalid time format: {str(e)}"}), 400
+        
         # Create job ID
         job_id = str(uuid.uuid4())
         
+        # Update data with parsed times
+        processed_data = {
+            **data,
+            'start_time': start_seconds,
+            'end_time': end_seconds
+        }
+        
         # Start async processing
-        job_manager.create_job(job_id, "split_video", "pending", data)
-        executor.submit(process_split_job, job_id, data)
+        job_manager.create_job(job_id, "split_video", "pending", processed_data)
+        executor.submit(process_split_job, job_id, processed_data)
         
         return jsonify({
             "job_id": job_id,
@@ -186,7 +233,22 @@ def get_job_status(job_id):
         if not job:
             return jsonify({"error": "Job not found"}), 404
         
-        return jsonify(job)
+        # Return only essential fields with download URLs instead of paths
+        simplified_job = {
+            "job_id": job.get("job_id"),
+            "status": job.get("status"),
+            "progress": job.get("progress", 0),
+            "error": job.get("error")
+        }
+        
+        # Add download URLs if job is completed
+        if job.get("status") == "completed":
+            if job.get("output_path"):
+                simplified_job["video_download_url"] = f"/download/{job_id}"
+            if job.get("subtitle_path"):
+                simplified_job["subtitle_download_url"] = f"/download-subtitles/{job_id}"
+        
+        return jsonify(simplified_job)
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500

@@ -2,9 +2,11 @@ version: '3.8'
 
 services:
   video-editor-api:
+    # Try GHCR image first, fallback to local build
     image: ghcr.io/jdportugal/videoeditorapi:latest
-    # Fallback to build if image not available:
-    # build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "5000:5000"
     environment:

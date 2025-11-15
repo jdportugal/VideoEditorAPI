@@ -1,248 +1,264 @@
-# ShortsCreator - Video Editor API
+# 🎬 VideoEditorAPI - AI Video Processing with Subtitles
 
-A Flask-based video editing API with async processing capabilities, featuring subtitle generation using Whisper, video splitting/joining, and music overlay functionality.
+Transform videos with AI-generated subtitles, karaoke effects, and professional editing tools.
 
-## Features
+## ⚡ Quick Deploy on Digital Ocean
 
-- 🎬 **Subtitle Generation**: Automatic subtitle generation using OpenAI Whisper
-- ✂️ **Video Splitting**: Split videos by start/end times
-- 🔗 **Video Joining**: Concatenate multiple videos
-- 🎵 **Music Overlay**: Add background music with custom settings
-- ⚡ **Async Processing**: Background job processing with status polling
-- 🐳 **Docker Ready**: Containerized for easy deployment
-- ☁️ **Cloud Ready**: Prepared for Digital Ocean deployment
-
-## Quick Start
-
-### Local Development
-
-1. **Create virtual environment**:
 ```bash
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+curl -fsSL https://raw.githubusercontent.com/jdportugal/VideoEditorAPI/main/install-ghcr.sh | sudo bash
 ```
 
-2. **Install dependencies**:
+**That's it!** Your API will be running at `http://your-droplet-ip:5000` in 30 seconds.
+
+## 🎯 Features
+
+- 🎤 **AI Subtitles** - Whisper-powered speech recognition with word-level timing
+- 🌟 **Karaoke Effects** - Real-time word highlighting with customizable styles
+- ✂️ **Video Editing** - Split, join, and trim videos with precise timing
+- 🎵 **Audio Mixing** - Add background music with volume control and fading
+- 📊 **Job Tracking** - Real-time processing status with progress updates
+- 🚀 **One-Click Deploy** - Ready for Digital Ocean with pre-built containers
+
+## 🚀 Quick Start
+
+### Option 1: One-Click Digital Ocean Deploy (Recommended)
 ```bash
-pip install -r requirements.txt
+# Create a Digital Ocean droplet (4GB+ RAM recommended)
+# SSH into your droplet and run:
+curl -fsSL https://raw.githubusercontent.com/jdportugal/VideoEditorAPI/main/install-ghcr.sh | sudo bash
 ```
 
-3. **Run the application**:
+### Option 2: Local Development
 ```bash
-python app.py
+git clone https://github.com/jdportugal/VideoEditorAPI.git
+cd VideoEditorAPI
+docker-compose up -d
 ```
 
-The API will be available at `http://localhost:5000`
+## 🛠️ API Endpoints
 
-### Docker Deployment
-
-1. **Build and run with Docker Compose**:
+### Add Subtitles with Karaoke Effect
 ```bash
-docker-compose up --build
+curl -X POST http://your-ip:5000/add-subtitles \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com/video.mp4",
+    "settings": {
+      "font-size": 120,
+      "normal-color": "#FFF4E9"
+    }
+  }'
 ```
 
-2. **Or use the deployment script**:
+### Split Video by Time Range
 ```bash
-./deploy.sh
+curl -X POST http://your-ip:5000/split-video \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com/video.mp4",
+    "start_time": "00:00:10,000",
+    "end_time": "00:01:30,500"
+  }'
 ```
 
-## API Endpoints
-
-### Health Check
+### Join Multiple Videos
+```bash
+curl -X POST http://your-ip:5000/join-videos \
+  -H "Content-Type: application/json" \
+  -d '{
+    "urls": [
+      "https://example.com/video1.mp4",
+      "https://example.com/video2.mp4"
+    ]
+  }'
 ```
-GET /health
+
+### Add Background Music
+```bash
+curl -X POST http://your-ip:5000/add-music \
+  -H "Content-Type: application/json" \
+  -d '{
+    "video_url": "https://example.com/video.mp4",
+    "music_url": "https://example.com/music.mp3",
+    "settings": {
+      "volume": 0.3,
+      "fade_in": 2,
+      "fade_out": 3
+    }
+  }'
 ```
 
-### Add Subtitles
+### Check Job Status
+```bash
+curl http://your-ip:5000/job-status/YOUR_JOB_ID
 ```
-POST /add-subtitles
-Content-Type: application/json
 
+### Download Results
+```bash
+# Download processed video
+curl http://your-ip:5000/download/YOUR_JOB_ID -o result.mp4
+
+# Download subtitle file
+curl http://your-ip:5000/download-subtitles/YOUR_JOB_ID -o subtitles.srt
+```
+
+## 📋 System Requirements
+
+| Use Case | CPU | RAM | Storage | Monthly Cost |
+|----------|-----|-----|---------|--------------|
+| Personal | 2 vCPUs | 4GB | 25GB | ~$24 |
+| Small Team | 4 vCPUs | 8GB | 50GB | ~$48 |
+| Production | 8 vCPUs | 16GB | 100GB | ~$96 |
+
+## 🎨 Subtitle Customization
+
+The API supports extensive subtitle customization:
+
+```json
 {
-  "language": "en",
   "url": "https://example.com/video.mp4",
-  "return_subtitles_file": true,
   "settings": {
-    "style": "classic",
-    "box-color": "#000000",
-    "outline-width": 10,
-    "word-color": "#002F6C",
-    "shadow-offset": 0,
-    "shadow-color": "#000000",
-    "max-words-per-line": 4,
-    "font-size": 100,
+    "font-size": 120,
     "font-family": "Luckiest Guy",
-    "position": "center-center",
-    "outline-color": "#000000",
-    "line-color": "#FFF4E9"
+    "normal-color": "#FFFFFF",
+    "outline-width": 10,
+    "position": "bottom-center"
   }
 }
 ```
 
-### Split Video
-```
-POST /split-video
-Content-Type: application/json
+### Available Options
+- **Font sizes**: 80-200px
+- **Colors**: Any hex color (#FFFFFF, #FF0000, etc.)
+- **Positions**: top-center, center-center, bottom-center, etc.
+- **Effects**: Karaoke highlighting, typewriter, popup modes
 
-{
-  "url": "https://example.com/video.mp4",
-  "start_time": 10.0,
-  "end_time": 30.0
-}
-```
+## 🔧 Advanced Configuration
 
-### Join Videos
-```
-POST /join-videos
-Content-Type: application/json
-
-{
-  "urls": [
-    "https://example.com/video1.mp4",
-    "https://example.com/video2.mp4",
-    "https://example.com/video3.mp4"
-  ]
-}
-```
-
-### Add Music
-```
-POST /add-music
-Content-Type: application/json
-
-{
-  "video_url": "https://example.com/video.mp4",
-  "music_url": "https://example.com/music.mp3",
-  "volume": 0.5,
-  "fade_in": 2,
-  "fade_out": 2,
-  "loop_music": true
-}
-```
-
-### Check Job Status
-```
-GET /job-status/{job_id}
-```
-
-### Download Result
-```
-GET /download/{job_id}
-```
-
-## Response Format
-
-All processing endpoints return a job ID:
-```json
-{
-  "job_id": "uuid-here",
-  "status": "pending",
-  "message": "Processing started"
-}
-```
-
-Job status responses:
-```json
-{
-  "job_id": "uuid-here",
-  "job_type": "add_subtitles",
-  "status": "completed",
-  "created_at": "2024-01-01T12:00:00",
-  "updated_at": "2024-01-01T12:02:00",
-  "progress": 100,
-  "output_path": "temp/uuid_output.mp4",
-  "subtitle_path": "temp/uuid_subtitles.srt"
-}
-```
-
-## Subtitle Settings
-
-| Setting | Description | Default |
-|---------|-------------|---------|
-| `style` | Text style | "classic" |
-| `box-color` | Background box color | "#000000" |
-| `outline-width` | Text outline width | 10 |
-| `word-color` | Text color | "#002F6C" |
-| `shadow-offset` | Shadow offset | 0 |
-| `shadow-color` | Shadow color | "#000000" |
-| `max-words-per-line` | Words per line | 4 |
-| `font-size` | Font size | 100 |
-| `font-family` | Font family | "Luckiest Guy" |
-| `position` | Text position | "center-center" |
-| `outline-color` | Outline color | "#000000" |
-| `line-color` | Line color | "#FFF4E9" |
-
-### Position Options
-- `top-left`, `top-center`, `top-right`
-- `center-left`, `center-center`, `center-right` 
-- `bottom-left`, `bottom-center`, `bottom-right`
-
-## Music Settings
-
-| Setting | Description | Default |
-|---------|-------------|---------|
-| `volume` | Music volume (0.0-1.0) | 0.5 |
-| `fade_in` | Fade in duration (seconds) | 0 |
-| `fade_out` | Fade out duration (seconds) | 0 |
-| `loop_music` | Loop music to match video | false |
-
-## Digital Ocean Deployment
-
-1. **Create a Digital Ocean Droplet** with Docker pre-installed
-2. **Clone the repository** on the droplet
-3. **Run the deployment script**:
+### Environment Variables
 ```bash
-./deploy.sh
-```
-
-### Environment Variables for Production
-
-Create a `.env` file for production settings:
-```bash
+# Optional customization in .env file
 FLASK_ENV=production
-MAX_CONTENT_LENGTH=500000000  # 500MB
-UPLOAD_TIMEOUT=600  # 10 minutes
+MAX_CONCURRENT_JOBS=4
+VIDEO_MAX_DURATION=1800
+WHISPER_MODEL=base
 ```
 
-## Dependencies
-
-- Flask 3.0.0
-- OpenAI Whisper
-- MoviePy
-- FFmpeg
-- PyTorch
-- Pillow
-
-## File Structure
-
-```
-ShortsCreator/
-├── app.py                 # Main Flask application
-├── requirements.txt       # Python dependencies
-├── Dockerfile            # Docker configuration
-├── docker-compose.yml    # Docker Compose configuration
-├── deploy.sh             # Deployment script
-├── app/
-│   ├── services/
-│   │   ├── video_service.py      # Video processing
-│   │   ├── subtitle_service.py   # Whisper integration
-│   │   └── job_manager.py        # Async job handling
-│   └── utils/
-│       └── download_utils.py     # URL download utilities
-├── temp/                 # Temporary files
-├── uploads/              # Upload directory
-├── jobs/                 # Job status files
-└── static/               # Static files
+### Docker Compose Override
+```yaml
+version: '3.8'
+services:
+  video-editor-api:
+    image: ghcr.io/jdportugal/videoeditorapi:latest
+    environment:
+      - MAX_WORKERS=8
+    volumes:
+      - ./custom-fonts:/app/fonts
 ```
 
-## Contributing
+## 📊 Performance & Scaling
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+### Processing Times (Approximate)
+- **1-minute video**: 30-60 seconds
+- **5-minute video**: 2-4 minutes  
+- **10-minute video**: 5-8 minutes
 
-## License
+### Scaling Options
+- **Horizontal**: Multiple droplets + load balancer
+- **Vertical**: Upgrade to CPU-optimized droplets
+- **Queue**: Redis-based job queuing for high volume
 
-MIT License - see LICENSE file for details
+## 🆘 Troubleshooting
+
+### Common Issues
+
+**API not responding:**
+```bash
+# Check service status
+docker-compose ps
+docker-compose logs -f
+
+# Restart if needed
+docker-compose restart
+```
+
+**Out of disk space:**
+```bash
+# Clean up temporary files
+docker system prune -f
+rm -rf /opt/shortscreator/temp/*
+```
+
+**Memory issues:**
+```bash
+# Check resource usage
+docker stats
+
+# Consider upgrading droplet size
+```
+
+## 🔄 Updates & Maintenance
+
+### One-Command Updates
+```bash
+cd /opt/shortscreator
+./update.sh
+```
+
+### Manual Updates
+```bash
+docker-compose pull
+docker-compose up -d
+```
+
+## 📚 Documentation
+
+- [🚀 Deployment Guide](DEPLOY.md) - Complete setup instructions
+- [🔧 Maintenance Guide](MAINTENANCE.md) - Zero-touch maintenance
+- [📖 API Documentation](API_DOCS.md) - Detailed endpoint reference
+
+## 🎉 What's Included
+
+✅ **Whisper AI** for accurate speech recognition  
+✅ **MoviePy** for professional video processing  
+✅ **Karaoke-style** subtitle highlighting  
+✅ **Custom fonts** (Luckiest Guy included)  
+✅ **Health monitoring** with auto-restart  
+✅ **Job queue system** for async processing  
+✅ **One-command updates** for easy maintenance  
+✅ **Pre-built Docker images** for fast deployment  
+
+## 🌟 Use Cases
+
+- **Content Creation**: Add subtitles to YouTube videos, TikToks, Instagram Reels
+- **Education**: Create educational videos with highlighted text
+- **Marketing**: Professional video content for social media
+- **Accessibility**: Make videos accessible with accurate subtitles
+- **Localization**: Generate subtitle files for translation
+
+## 💡 Tips for Best Results
+
+1. **Video Quality**: Use MP4 format with clear audio
+2. **File Size**: Keep videos under 500MB for faster processing
+3. **Audio Quality**: Clear speech improves subtitle accuracy
+4. **Network**: Stable internet connection for file uploads/downloads
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+## 📞 Support
+
+- 📖 [Documentation](https://github.com/jdportugal/VideoEditorAPI/wiki)
+- 🐛 [Issues](https://github.com/jdportugal/VideoEditorAPI/issues)
+- 💬 [Discussions](https://github.com/jdportugal/VideoEditorAPI/discussions)
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+⭐ **Star this repository if it helped you!**
+
+Built with ❤️ using Python, Flask, Whisper AI, and MoviePy.

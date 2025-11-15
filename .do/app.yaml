@@ -1,0 +1,65 @@
+name: shortscreator
+region: nyc
+
+services:
+- name: api
+  source_dir: /
+  dockerfile_path: Dockerfile
+  github:
+    repo: jdportugal/VideoEditorAPI
+    branch: main
+    deploy_on_push: true
+  
+  instance_count: 1
+  instance_size_slug: basic-xxs
+  
+  http_port: 5000
+  
+  environment_slug: basic-xxs
+  
+  env:
+  - key: FLASK_ENV
+    value: production
+  - key: FLASK_APP
+    value: app.py
+  - key: PYTHONPATH
+    value: /app
+  
+  health_check:
+    http_path: /health
+    initial_delay_seconds: 60
+    period_seconds: 30
+    timeout_seconds: 10
+    success_threshold: 1
+    failure_threshold: 3
+
+  alerts:
+  - rule: CPU_UTILIZATION
+    value: 80
+  - rule: MEM_UTILIZATION
+    value: 80
+  - rule: RESTART_COUNT
+    value: 5
+
+workers:
+- name: worker
+  source_dir: /
+  dockerfile_path: Dockerfile
+  github:
+    repo: jdportugal/VideoEditorAPI
+    branch: main
+  
+  instance_count: 1
+  instance_size_slug: basic-xs
+  
+  env:
+  - key: FLASK_ENV
+    value: production
+  - key: WORKER_MODE
+    value: true
+    
+static_sites: []
+
+jobs: []
+
+databases: []

@@ -21,11 +21,6 @@ class SubtitleService:
             List of subtitle segments with timing and text
         """
         try:
-            print(f"🎙️  Transcribing audio from: {video_path}")
-            print(f"🎙️  Language: {language}")
-            print(f"🎙️  Timing offset: {timing_offset}s")
-            print(f"🎙️  Whisper model: {self.model.name if hasattr(self.model, 'name') else 'unknown'}")
-            
             # Transcribe the audio
             result = self.model.transcribe(
                 video_path,
@@ -33,8 +28,6 @@ class SubtitleService:
                 word_timestamps=True,
                 verbose=False
             )
-            
-            print(f"🎙️  Whisper found {len(result['segments'])} segments")
             
             # Process segments into subtitle format
             subtitles = []
@@ -52,7 +45,6 @@ class SubtitleService:
                 
                 # Add word-level timestamps if available
                 if "words" in segment:
-                    print(f"   🔍 Segment {i+1} has {len(segment['words'])} words")
                     for j, word in enumerate(segment["words"]):
                         word_start = max(0, word["start"] + timing_offset)
                         word_end = max(word_start + 0.1, word["end"] + timing_offset)
@@ -61,17 +53,9 @@ class SubtitleService:
                             "start": word_start,
                             "end": word_end
                         })
-                        # Log first few words for debugging
-                        if j < 3:
-                            print(f"      Word {j+1}: '{word['word'].strip()}' ({word_start:.2f}s-{word_end:.2f}s)")
-                else:
-                    print(f"   ❌ Segment {i+1} has NO word-level data!")
                 
                 subtitles.append(subtitle_segment)
                 
-                # Log first few segments for debugging
-                if i < 3:
-                    print(f"   Segment {i+1}: {adjusted_start:.2f}s-{adjusted_end:.2f}s | {segment['text'].strip()[:50]}...")
             
             return subtitles
             

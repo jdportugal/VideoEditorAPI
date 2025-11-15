@@ -181,17 +181,10 @@ class VideoService:
         highlight_color = settings.get("highlight_color", "#FFFF00")
         normal_color = settings.get("line-color", "#FFFFFF")
         
-        print(f"🎤 Creating karaoke clips with highlight color: {highlight_color}")
-        print(f"🎤 Total subtitles to process: {len(subtitles)}")
-        
-        karaoke_clips_created = 0
-        sentence_fallbacks = 0
+        print(f"🎤 Creating karaoke clips for {len(subtitles)} segments")
         
         for i, subtitle in enumerate(subtitles):
             if not subtitle.get("words"):
-                print(f"   ⚠️  Subtitle {i+1} has NO word data - creating sentence fallback")
-                sentence_fallbacks += 1
-                
                 # Fallback to sentence-level subtitle for this segment
                 formatted_text = subtitle_service.format_text_for_video(
                     subtitle["text"], 
@@ -207,11 +200,6 @@ class VideoService:
                 
                 clips.append(sentence_clip)
                 continue
-            
-            print(f"   ✅ Subtitle {i+1} has {len(subtitle['words'])} words for karaoke")
-            karaoke_clips_created += 1
-                
-            # Skip background text clip - show only individual highlighted words
             
             # Create individual word highlights that appear only when that word is spoken
             for word in subtitle["words"]:
@@ -232,8 +220,7 @@ class VideoService:
                     
                     clips.append(highlight_clip)
         
-        print(f"🎤 Karaoke summary: {karaoke_clips_created} segments with words, {sentence_fallbacks} sentence fallbacks")
-        print(f"🎤 Total clips created: {len(clips)}")
+        print(f"🎤 Created {len(clips)} karaoke clips")
         
         return clips
     

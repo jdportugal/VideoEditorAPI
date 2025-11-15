@@ -32,12 +32,8 @@ def add_subtitles():
     try:
         data = request.get_json()
         
-        # DEBUG: Log raw request data
-        print(f"🔍 RAW REQUEST DATA: {data}")
-        if data and 'word_level_mode' in data:
-            print(f"🎯 REQUEST word_level_mode: '{data['word_level_mode']}'")
-        else:
-            print("❌ NO word_level_mode in request data")
+        # Log request info
+        print(f"📝 Processing subtitle request")
         
         # Validate required fields
         if not data or 'url' not in data:
@@ -75,15 +71,8 @@ def add_subtitles():
             }
         }
         
-        # DEBUG: Log merge operation
-        print(f"🔧 DEFAULT word_level_mode: '{default_settings['word_level_mode']}'")
-        
         # Merge with provided settings
         settings = {**default_settings, **data}
-        
-        # DEBUG: Log merge result
-        print(f"✅ MERGED word_level_mode: '{settings['word_level_mode']}'")
-        print(f"📋 FULL MERGED SETTINGS: {settings}")
         
         # Start async processing
         job_manager.create_job(job_id, "add_subtitles", "pending", settings)
@@ -220,6 +209,27 @@ def download_result(job_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/download-subtitles/<job_id>', methods=['GET'])
+def download_subtitles(job_id):
+    try:
+        job = job_manager.get_job(job_id)
+        if not job:
+            return jsonify({"error": "Job not found"}), 404
+        
+        if job['status'] != 'completed':
+            return jsonify({"error": "Job not completed yet"}), 400
+        
+        if 'subtitle_path' not in job or not job['subtitle_path']:
+            return jsonify({"error": "No subtitle file available - set return_subtitles_file: true in request"}), 404
+        
+        if not os.path.exists(job['subtitle_path']):
+            return jsonify({"error": "Subtitle file not found"}), 404
+        
+        return send_file(job['subtitle_path'], as_attachment=True, download_name=f"{job_id}_subtitles.srt")
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # Async processing functions
 def process_subtitle_job(job_id, settings):
     video_path = None
@@ -239,25 +249,11 @@ def process_subtitle_job(job_id, settings):
         
         # Analyze timing for potential issues
         timing_analysis = subtitle_service.analyze_timing_gaps(subtitle_data)
-        if timing_analysis.get("recommendations"):
-            print(f"⚠️  Timing analysis found {len(timing_analysis['recommendations'])} recommendations:")
-            for rec in timing_analysis["recommendations"]:
-                if rec["severity"] == "high":
-                    print(f"   🔴 {rec['message']} (suggested offset: {rec['suggested_offset']:+.1f}s)")
-                elif rec["severity"] == "medium":
-                    print(f"   🟡 {rec['message']}")
-                else:
-                    print(f"   🟢 {rec['message']}")
-        
-        # Log timing statistics
-        print(f"📊 Timing stats: {timing_analysis['total_segments']} segments, "
-              f"{timing_analysis['significant_gaps']} gaps, "
-              f"{timing_analysis['timing_span']:.1f}s total span")
         
         # Create video with subtitles
         output_path = f"temp/{job_id}_output.mp4"
         word_mode = settings.get('word_level_mode', 'off')
-        print(f"🎯 Requested word_level_mode: '{word_mode}'")
+        print(f"🎯 Processing with {word_mode} mode")
         
         video_service.add_subtitles_to_video(
             video_path,

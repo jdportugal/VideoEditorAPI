@@ -1,0 +1,16 @@
+{
+  "url": "https://drive.google.com/file/d/1oNFjS0TU8fj3KI6quwdFWsSW2iqKG_lH/view?usp=drive_link",
+  "word_level_mode": "karaoke",
+  "return_subtitles_file": true,
+  "word_level_settings": {
+    "highlight_color": "#FFFF00",
+    "normal_color": "#FFFFFF"
+  },
+  "settings": {
+    "font-size": 120,
+    "font-family": "Luckiest Guy",
+    "line-color": "#FFF4E9",
+    "outline-color": "#000000",
+    "outline-width": 3
+  }
+}

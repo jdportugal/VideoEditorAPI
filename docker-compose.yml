@@ -2,9 +2,9 @@ version: '3.8'
 
 services:
   video-editor-api:
-    image: ghcr.io/jdportugal/videoeditorapi:latest
-    # Fallback to build if image not available:
-    # build: .
+    # image: ghcr.io/jdportugal/videoeditorapi:latest
+    # Using local build to include recent job_id feature:
+    build: .
     ports:
       - "8080:8080"
     environment:

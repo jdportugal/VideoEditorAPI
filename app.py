@@ -118,9 +118,19 @@ def split_video():
     try:
         data = request.get_json()
         
-        # Validate required fields
-        required_fields = ['url', 'start_time', 'end_time']
-        for field in required_fields:
+        # Validate input: must have either 'url' or 'job_id', plus time fields
+        has_url = 'url' in data
+        has_job_id = 'job_id' in data
+        
+        if not has_url and not has_job_id:
+            return jsonify({"error": "Must provide either 'url' or 'job_id'"}), 400
+        
+        if has_url and has_job_id:
+            return jsonify({"error": "Provide either 'url' or 'job_id', not both"}), 400
+            
+        # Validate time fields
+        required_time_fields = ['start_time', 'end_time'] 
+        for field in required_time_fields:
             if field not in data:
                 return jsonify({"error": f"Missing required field: {field}"}), 400
         
@@ -361,9 +371,28 @@ def process_split_job(job_id, data):
     try:
         job_manager.update_job_status(job_id, "processing")
         
-        # Download video
-        video_url = data['url']
-        video_path = download_file(video_url, 'temp', f"{job_id}_input.mp4")
+        # Get video path - either from URL or previous job
+        if 'url' in data:
+            # Download video from URL
+            video_url = data['url']
+            video_path = download_file(video_url, 'temp', f"{job_id}_input.mp4")
+        elif 'job_id' in data:
+            # Use output from previous job
+            previous_job = job_manager.get_job(data['job_id'])
+            if not previous_job:
+                raise Exception(f"Previous job not found: {data['job_id']}")
+            
+            if previous_job['status'] != 'completed':
+                raise Exception(f"Previous job not completed: {data['job_id']} (status: {previous_job['status']})")
+            
+            if 'output_path' not in previous_job:
+                raise Exception(f"Previous job has no output file: {data['job_id']}")
+            
+            previous_output_path = previous_job['output_path']
+            if not os.path.exists(previous_output_path):
+                raise Exception(f"Previous job output file not found: {previous_output_path}")
+            
+            video_path = previous_output_path
         
         # Split video
         output_path = f"temp/{job_id}_split.mp4"
@@ -419,6 +448,112 @@ def process_music_job(job_id, data):
         
     except Exception as e:
         job_manager.fail_job(job_id, str(e))
+
+@app.route('/admin/cleanup', methods=['POST'])
+def cleanup_all():
+    """
+    Comprehensive cleanup endpoint - removes ALL jobs and files.
+    This will clean up completed, failed, and pending jobs along with all temp files.
+    """
+    try:
+        print("🧹 Starting comprehensive cleanup...")
+        
+        cleanup_stats = {
+            "jobs_removed": 0,
+            "temp_files_removed": 0,
+            "upload_files_removed": 0,
+            "static_files_removed": 0,
+            "total_size_freed": 0,
+            "directories_cleaned": []
+        }
+        
+        # 1. Clean up all job files
+        jobs_dir = 'jobs'
+        if os.path.exists(jobs_dir):
+            for job_file in os.listdir(jobs_dir):
+                job_path = os.path.join(jobs_dir, job_file)
+                if os.path.isfile(job_path):
+                    try:
+                        file_size = os.path.getsize(job_path)
+                        os.remove(job_path)
+                        cleanup_stats["jobs_removed"] += 1
+                        cleanup_stats["total_size_freed"] += file_size
+                        print(f"Removed job file: {job_path}")
+                    except Exception as e:
+                        print(f"Warning: Could not remove job file {job_path}: {e}")
+            cleanup_stats["directories_cleaned"].append(jobs_dir)
+        
+        # 2. Clean up all temp files
+        temp_dir = 'temp'
+        if os.path.exists(temp_dir):
+            for temp_file in os.listdir(temp_dir):
+                temp_path = os.path.join(temp_dir, temp_file)
+                if os.path.isfile(temp_path):
+                    try:
+                        file_size = os.path.getsize(temp_path)
+                        os.remove(temp_path)
+                        cleanup_stats["temp_files_removed"] += 1
+                        cleanup_stats["total_size_freed"] += file_size
+                        print(f"Removed temp file: {temp_path}")
+                    except Exception as e:
+                        print(f"Warning: Could not remove temp file {temp_path}: {e}")
+            cleanup_stats["directories_cleaned"].append(temp_dir)
+        
+        # 3. Clean up all upload files
+        uploads_dir = 'uploads'
+        if os.path.exists(uploads_dir):
+            for upload_file in os.listdir(uploads_dir):
+                upload_path = os.path.join(uploads_dir, upload_file)
+                if os.path.isfile(upload_path):
+                    try:
+                        file_size = os.path.getsize(upload_path)
+                        os.remove(upload_path)
+                        cleanup_stats["upload_files_removed"] += 1
+                        cleanup_stats["total_size_freed"] += file_size
+                        print(f"Removed upload file: {upload_path}")
+                    except Exception as e:
+                        print(f"Warning: Could not remove upload file {upload_path}: {e}")
+            cleanup_stats["directories_cleaned"].append(uploads_dir)
+        
+        # 4. Clean up static files (if any)
+        static_dir = 'static'
+        if os.path.exists(static_dir):
+            for static_file in os.listdir(static_dir):
+                static_path = os.path.join(static_dir, static_file)
+                if os.path.isfile(static_path):
+                    try:
+                        file_size = os.path.getsize(static_path)
+                        os.remove(static_path)
+                        cleanup_stats["static_files_removed"] += 1
+                        cleanup_stats["total_size_freed"] += file_size
+                        print(f"Removed static file: {static_path}")
+                    except Exception as e:
+                        print(f"Warning: Could not remove static file {static_path}: {e}")
+            cleanup_stats["directories_cleaned"].append(static_dir)
+        
+        # Convert bytes to human readable format
+        def format_size(bytes_size):
+            for unit in ['B', 'KB', 'MB', 'GB']:
+                if bytes_size < 1024.0:
+                    return f"{bytes_size:.2f} {unit}"
+                bytes_size /= 1024.0
+            return f"{bytes_size:.2f} TB"
+        
+        cleanup_stats["total_size_freed_formatted"] = format_size(cleanup_stats["total_size_freed"])
+        
+        print(f"🧹 Cleanup completed! Freed {cleanup_stats['total_size_freed_formatted']} of disk space")
+        
+        return jsonify({
+            "status": "success",
+            "message": "Comprehensive cleanup completed",
+            "timestamp": datetime.now().isoformat(),
+            "cleanup_stats": cleanup_stats
+        })
+        
+    except Exception as e:
+        error_message = f"Error during cleanup: {str(e)}"
+        print(f"❌ {error_message}")
+        return jsonify({"error": error_message}), 500
 
 if __name__ == '__main__':
     # Create necessary directories

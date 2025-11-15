@@ -106,6 +106,22 @@ curl -X POST http://localhost:8080/split-video \
   }'
 ```
 
+**Job Chaining - Split Previous Output:**
+```bash
+curl -X POST http://localhost:8080/split-video \
+  -H "Content-Type: application/json" \
+  -d '{
+    "job_id": "previous-job-uuid",
+    "start_time": "00:00:05,000",
+    "end_time": "00:00:15,000"
+  }'
+```
+
+**Parameters:**
+- `url` OR `job_id` (required): Video URL or previous job ID to split
+- `start_time` (required): Start time for split
+- `end_time` (required): End time for split
+
 **Time Formats Supported:**
 - `"00:01:30,500"` (HH:MM:SS,mmm)
 - `"90.5"` (seconds as string)
@@ -178,6 +194,43 @@ curl http://localhost:8080/job-status/your-job-id
 
 ---
 
+### Admin Cleanup
+```bash
+POST /admin/cleanup
+curl -X POST http://localhost:8080/admin/cleanup \
+  -H "Content-Type: application/json"
+```
+
+**Purpose**: Comprehensive cleanup of all jobs and files (completed, failed, pending)
+
+**Removes**: 
+- All job files (jobs directory)
+- All temporary files (temp directory)  
+- All uploaded files (uploads directory)
+- All static files (static directory)
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Comprehensive cleanup completed",
+  "timestamp": "2025-11-15T11:59:04.888763",
+  "cleanup_stats": {
+    "jobs_removed": 10,
+    "temp_files_removed": 18,
+    "upload_files_removed": 1,
+    "static_files_removed": 1,
+    "total_size_freed": 322308966,
+    "total_size_freed_formatted": "307.38 MB",
+    "directories_cleaned": ["jobs", "temp", "uploads", "static"]
+  }
+}
+```
+
+**⚠️ Warning**: This operation is **irreversible** and removes ALL files regardless of status.
+
+---
+
 ### Download Processed Video
 ```bash
 GET /download/<job_id>
@@ -233,6 +286,25 @@ curl -X POST http://localhost:8080/add-subtitles \
       "position": "top-center"
     }
   }'
+```
+
+### Job Chaining Workflow
+```bash
+# 1. Add subtitles to original video
+SUBTITLE_JOB=$(curl -s -X POST http://localhost:8080/add-subtitles \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com/video.mp4"}' | jq -r '.job_id')
+
+# 2. Wait for completion and get status
+curl http://localhost:8080/job-status/$SUBTITLE_JOB
+
+# 3. Split the subtitled video using job chaining
+SPLIT_JOB=$(curl -s -X POST http://localhost:8080/split-video \
+  -H "Content-Type: application/json" \
+  -d "{\"job_id\": \"$SUBTITLE_JOB\", \"start_time\": \"00:00:10,000\", \"end_time\": \"00:00:30,000\"}" | jq -r '.job_id')
+
+# 4. Download the final result
+curl http://localhost:8080/download/$SPLIT_JOB -o final_video.mp4
 ```
 
 ### Split & Process Workflow

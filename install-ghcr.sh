@@ -68,7 +68,7 @@ services:
     image: ghcr.io/jdportugal/videoeditorapi:latest
     container_name: shortscreator
     ports:
-      - "5000:5000"
+      - "8080:8080"
     environment:
       - FLASK_ENV=production
     volumes:
@@ -77,7 +77,7 @@ services:
       - ./jobs:/app/jobs
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -154,7 +154,7 @@ services:
       context: https://github.com/jdportugal/VideoEditorAPI.git
     container_name: shortscreator
     ports:
-      - "5000:5000"
+      - "8080:8080"
     environment:
       - FLASK_ENV=production
     volumes:
@@ -163,7 +163,7 @@ services:
       - ./jobs:/app/jobs
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -182,7 +182,7 @@ sleep 45
 SERVER_IP=$(curl -s http://checkip.amazonaws.com 2>/dev/null || echo "YOUR_SERVER_IP")
 
 # Verify health
-if curl -f -s "http://localhost:5000/health" > /dev/null; then
+if curl -f -s "http://localhost:8080/health" > /dev/null; then
     print_success "🎉 ShortsCreator is running successfully!"
 else
     print_warning "Service may still be starting up..."
@@ -191,8 +191,8 @@ fi
 echo
 echo "📋 Installation Complete!"
 echo "========================"
-echo "🌐 API URL: http://$SERVER_IP:5000"
-echo "🔍 Health: http://$SERVER_IP:5000/health"
+echo "🌐 API URL: http://$SERVER_IP:8080"
+echo "🔍 Health: http://$SERVER_IP:8080/health"
 echo
 echo "🛠️  Simple Management:"
 echo "  Update:  cd $APP_DIR && ./update.sh"

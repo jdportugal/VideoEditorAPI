@@ -183,7 +183,7 @@ SERVER_IP=$(curl -s http://checkip.amazonaws.com 2>/dev/null || curl -s http://i
 # Test health endpoint
 print_status "Testing API health..."
 sleep 10
-if curl -f -s "http://localhost:5000/health" > /dev/null; then
+if curl -f -s "http://localhost:8080/health" > /dev/null; then
     print_success "API is responding correctly"
 else
     print_warning "API health check failed - service may still be starting"
@@ -194,8 +194,8 @@ print_success "🎉 ShortsCreator installed successfully!"
 echo
 echo "📋 Installation Summary:"
 echo "======================="
-echo "🌐 API URL: http://$SERVER_IP:5000"
-echo "🔍 Health Check: http://$SERVER_IP:5000/health"
+echo "🌐 API URL: http://$SERVER_IP:8080"
+echo "🔍 Health Check: http://$SERVER_IP:8080/health"
 echo "📁 App Directory: $APP_DIR"
 echo
 echo "🛠️  Management Commands:"
@@ -214,7 +214,7 @@ echo "  GET  /job-status/<id>  - Check processing status"
 echo "  GET  /download/<id>    - Download processed video"
 echo
 echo "🔧 Example Usage:"
-echo "curl -X POST http://$SERVER_IP:5000/add-subtitles \\"
+echo "curl -X POST http://$SERVER_IP:8080/add-subtitles \\"
 echo "  -H 'Content-Type: application/json' \\"
 echo "  -d '{\"url\": \"https://example.com/video.mp4\"}'"
 echo

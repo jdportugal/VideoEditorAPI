@@ -4,7 +4,10 @@ AI-powered video processing API with subtitle generation, karaoke effects, and e
 
 ## ⚡ Quick Start
 
-### Option 1: One-Click Digital Ocean Deploy (Recommended)
+### Option 1: Digital Ocean App Platform (Easiest)
+[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/jdportugal/VideoEditorAPI/tree/main&refcode=your-referral-code)
+
+### Option 2: One-Click Droplet Deploy  
 ```bash
 curl -fsSL https://raw.githubusercontent.com/jdportugal/VideoEditorAPI/main/install-ghcr.sh | sudo bash
 ```
@@ -18,7 +21,7 @@ docker-compose up -d
 
 ### Option 3: Manual Docker
 ```bash
-docker run -d -p 5000:5000 ghcr.io/jdportugal/videoeditorapi:latest
+docker run -d -p 8080:8080 ghcr.io/jdportugal/videoeditorapi:latest
 ```
 
 ## 🎯 Features
@@ -41,7 +44,7 @@ docker run -d -p 5000:5000 ghcr.io/jdportugal/videoeditorapi:latest
 ### Health Check
 ```bash
 GET /health
-curl http://localhost:5000/health
+curl http://localhost:8080/health
 ```
 **Response:**
 ```json
@@ -53,7 +56,7 @@ curl http://localhost:5000/health
 ### Add Subtitles with Karaoke Effect
 ```bash
 POST /add-subtitles
-curl -X POST http://localhost:5000/add-subtitles \
+curl -X POST http://localhost:8080/add-subtitles \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://example.com/video.mp4",
@@ -94,7 +97,7 @@ curl -X POST http://localhost:5000/add-subtitles \
 ### Split Video by Time
 ```bash
 POST /split-video
-curl -X POST http://localhost:5000/split-video \
+curl -X POST http://localhost:8080/split-video \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://example.com/video.mp4",
@@ -113,7 +116,7 @@ curl -X POST http://localhost:5000/split-video \
 ### Join Multiple Videos
 ```bash
 POST /join-videos
-curl -X POST http://localhost:5000/join-videos \
+curl -X POST http://localhost:8080/join-videos \
   -H "Content-Type: application/json" \
   -d '{
     "urls": [
@@ -128,7 +131,7 @@ curl -X POST http://localhost:5000/join-videos \
 ### Add Background Music
 ```bash
 POST /add-music
-curl -X POST http://localhost:5000/add-music \
+curl -X POST http://localhost:8080/add-music \
   -H "Content-Type: application/json" \
   -d '{
     "video_url": "https://example.com/video.mp4",
@@ -153,7 +156,7 @@ curl -X POST http://localhost:5000/add-music \
 ### Check Job Status
 ```bash
 GET /job-status/<job_id>
-curl http://localhost:5000/job-status/your-job-id
+curl http://localhost:8080/job-status/your-job-id
 ```
 
 **Response:**
@@ -178,7 +181,7 @@ curl http://localhost:5000/job-status/your-job-id
 ### Download Processed Video
 ```bash
 GET /download/<job_id>
-curl http://localhost:5000/download/your-job-id -o result.mp4
+curl http://localhost:8080/download/your-job-id -o result.mp4
 ```
 
 ---
@@ -186,7 +189,7 @@ curl http://localhost:5000/download/your-job-id -o result.mp4
 ### Download Subtitle File
 ```bash
 GET /download-subtitles/<job_id>  
-curl http://localhost:5000/download-subtitles/your-job-id -o subtitles.srt
+curl http://localhost:8080/download-subtitles/your-job-id -o subtitles.srt
 ```
 
 ## 🎨 Subtitle Customization
@@ -212,14 +215,14 @@ curl http://localhost:5000/download-subtitles/your-job-id -o subtitles.srt
 
 ### Basic Subtitle Addition
 ```bash
-curl -X POST http://localhost:5000/add-subtitles \
+curl -X POST http://localhost:8080/add-subtitles \
   -H "Content-Type: application/json" \
   -d '{"url": "https://example.com/video.mp4"}'
 ```
 
 ### Custom Styling
 ```bash
-curl -X POST http://localhost:5000/add-subtitles \
+curl -X POST http://localhost:8080/add-subtitles \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://example.com/video.mp4", 
@@ -235,7 +238,7 @@ curl -X POST http://localhost:5000/add-subtitles \
 ### Split & Process Workflow
 ```bash
 # 1. Split video to extract segment
-curl -X POST http://localhost:5000/split-video \
+curl -X POST http://localhost:8080/split-video \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://example.com/long-video.mp4",
@@ -244,13 +247,13 @@ curl -X POST http://localhost:5000/split-video \
   }'
 
 # 2. Get job ID from response, check status
-curl http://localhost:5000/job-status/JOB_ID
+curl http://localhost:8080/job-status/JOB_ID
 
 # 3. Download split video
-curl http://localhost:5000/download/JOB_ID -o segment.mp4
+curl http://localhost:8080/download/JOB_ID -o segment.mp4
 
 # 4. Add subtitles to segment
-curl -X POST http://localhost:5000/add-subtitles \
+curl -X POST http://localhost:8080/add-subtitles \
   -H "Content-Type: application/json" \
   -d '{"url": "https://yourdomain.com/segment.mp4"}'
 ```
@@ -314,13 +317,13 @@ docker logs videoeditor
 
 ### Common Issues
 
-**Port 5000 not accessible:**
+**Port 8080 not accessible:**
 ```bash
 # Check firewall
-sudo ufw allow 5000/tcp
+sudo ufw allow 8080/tcp
 
 # Check if service is running
-curl http://localhost:5000/health
+curl http://localhost:8080/health
 ```
 
 **Out of disk space:**
@@ -377,7 +380,7 @@ docker-compose up -d
 ### Health Monitoring
 ```bash
 # Check API health
-curl http://localhost:5000/health
+curl http://localhost:8080/health
 
 # View recent logs
 docker-compose logs --tail=50
@@ -393,7 +396,7 @@ docker stats
 const axios = require('axios');
 
 async function addSubtitles(videoUrl) {
-  const response = await axios.post('http://localhost:5000/add-subtitles', {
+  const response = await axios.post('http://localhost:8080/add-subtitles', {
     url: videoUrl,
     settings: {
       'font-size': 120,
@@ -405,7 +408,7 @@ async function addSubtitles(videoUrl) {
 }
 
 async function checkJobStatus(jobId) {
-  const response = await axios.get(`http://localhost:5000/job-status/${jobId}`);
+  const response = await axios.get(`http://localhost:8080/job-status/${jobId}`);
   return response.data;
 }
 ```
@@ -416,7 +419,7 @@ import requests
 import time
 
 def add_subtitles(video_url):
-    response = requests.post('http://localhost:5000/add-subtitles', json={
+    response = requests.post('http://localhost:8080/add-subtitles', json={
         'url': video_url,
         'settings': {
             'font-size': 120,
@@ -427,7 +430,7 @@ def add_subtitles(video_url):
 
 def wait_for_completion(job_id):
     while True:
-        response = requests.get(f'http://localhost:5000/job-status/{job_id}')
+        response = requests.get(f'http://localhost:8080/job-status/{job_id}')
         status = response.json()
         
         if status['status'] == 'completed':
@@ -444,7 +447,7 @@ def wait_for_completion(job_id):
 # process_video.sh
 
 VIDEO_URL="$1"
-API_URL="http://localhost:5000"
+API_URL="http://localhost:8080"
 
 # Submit job
 JOB_ID=$(curl -s -X POST "$API_URL/add-subtitles" \

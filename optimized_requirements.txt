@@ -1,0 +1,14 @@
+Flask==3.0.0
+Flask-CORS==4.0.0
+requests==2.31.0
+openai-whisper==20231117
+torch==2.0.1
+torchaudio==2.0.2
+moviepy==1.0.3
+ffmpeg-python==0.2.0
+pillow==10.1.0
+python-dotenv==1.0.0
+numpy<2.0.0
+
+# Performance monitoring and optimization
+psutil==5.9.5        # System resource monitoring

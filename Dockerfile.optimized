@@ -1,0 +1,68 @@
+# Optimized Dockerfile for 4GB RAM / 2 vCPU systems
+FROM python:3.11-slim
+
+# Install system dependencies with minimal packages for memory efficiency
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    fonts-dejavu \
+    git \
+    curl \
+    wget \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create a simple font directory (skip heavy fonts for memory efficiency)
+RUN mkdir -p /usr/share/fonts/truetype/dejavu
+
+# Set working directory
+WORKDIR /app
+
+# Copy optimized requirements for better performance
+COPY optimized_requirements.txt requirements.txt ./
+
+# Install Python dependencies with optimizations for limited memory
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r optimized_requirements.txt \
+    && pip cache purge
+
+# Copy application code
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p temp uploads jobs static performance_charts
+
+# Set environment variables for optimized performance
+ENV FLASK_APP=app_optimized.py
+ENV FLASK_ENV=production
+ENV PYTHONPATH=/app
+ENV PORT=8080
+
+# Memory optimization environment variables
+ENV PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+ENV OMP_NUM_THREADS=1
+ENV MKL_NUM_THREADS=1
+
+# Resource limits for container
+ENV MEMORY_LIMIT=4G
+ENV CPU_LIMIT=2
+
+# Expose port
+EXPOSE 8080
+
+# Enhanced health check for optimized version
+HEALTHCHECK --interval=30s --timeout=15s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Add performance monitoring script
+RUN chmod +x scripts/performance_test.py
+
+# Labels for optimized container
+LABEL maintainer="VideoEditorAPI"
+LABEL version="optimized-v1.0"
+LABEL description="Memory-optimized VideoEditorAPI for 4GB RAM systems"
+LABEL performance.memory="4GB"
+LABEL performance.cpu="2vCPU"
+LABEL optimization="chunked-processing"
+
+# Run the optimized application with resource monitoring
+CMD ["python", "app_optimized.py"]

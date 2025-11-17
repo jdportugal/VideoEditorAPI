@@ -25,10 +25,10 @@ RUN mkdir -p /usr/share/fonts/truetype/luckiest-guy \
 WORKDIR /app
 
 # Copy requirements first for better caching
-COPY requirements.txt .
+COPY requirements.txt optimized_requirements.txt ./
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies (including optimization dependencies)
+RUN pip install --no-cache-dir -r optimized_requirements.txt
 
 # Copy application code
 COPY . .
@@ -36,10 +36,11 @@ COPY . .
 # Create necessary directories
 RUN mkdir -p temp uploads jobs static
 
-# Set environment variables
-ENV FLASK_APP=app.py
+# Set environment variables for optimized performance
+ENV FLASK_APP=app_optimized.py
 ENV FLASK_ENV=production
 ENV PYTHONPATH=/app
+ENV PORT=8080
 
 # Expose port
 EXPOSE 8080
@@ -48,5 +49,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
-# Run the application
-CMD ["python", "app.py"]
+# Run the optimized application
+CMD ["python", "app_optimized.py"]

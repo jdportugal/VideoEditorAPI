@@ -9,7 +9,7 @@ from datetime import datetime
 import re
 
 from app.services.video_service import VideoService
-from app.services.subtitle_service import SubtitleService
+# from app.services.subtitle_service import SubtitleService  # Temporarily disabled
 from app.services.job_manager import JobManager
 from app.utils.download_utils import download_file
 
@@ -18,7 +18,7 @@ CORS(app)
 
 # Initialize services
 video_service = VideoService()
-subtitle_service = SubtitleService()
+# subtitle_service = SubtitleService()  # Temporarily disabled
 job_manager = JobManager()
 
 # Thread pool for async processing

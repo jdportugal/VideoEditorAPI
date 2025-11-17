@@ -21,6 +21,7 @@ class JobManager:
             "updated_at": datetime.now().isoformat(),
             "data": data,
             "progress": 0,
+            "status_message": "Job created",
             "error": None,
             "output_path": None,
             "subtitle_path": None
@@ -43,8 +44,8 @@ class JobManager:
             print(f"Error reading job file: {e}")
             return None
     
-    def update_job_status(self, job_id: str, status: str, progress: int = None) -> bool:
-        """Update job status and optionally progress."""
+    def update_job_status(self, job_id: str, status: str, progress: int = None, status_message: str = None) -> bool:
+        """Update job status, progress, and detailed status message."""
         job = self.get_job(job_id)
         if not job:
             return False
@@ -54,6 +55,9 @@ class JobManager:
         
         if progress is not None:
             job["progress"] = progress
+            
+        if status_message is not None:
+            job["status_message"] = status_message
         
         self._save_job(job)
         return True

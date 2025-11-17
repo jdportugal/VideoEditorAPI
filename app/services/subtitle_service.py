@@ -5,8 +5,8 @@ import json
 
 class SubtitleService:
     def __init__(self):
-        # Load Whisper model - using base for speed/accuracy balance
-        self.model = whisper.load_model("base")
+        # Load Whisper model - using tiny for maximum speed on constrained systems
+        self.model = whisper.load_model("tiny")
     
     def generate_subtitles(self, video_path: str, language: str = "en", timing_offset: float = 0.0) -> List[Dict[str, Any]]:
         """
@@ -21,13 +21,19 @@ class SubtitleService:
             List of subtitle segments with timing and text
         """
         try:
+            print(f"🎙️ Starting Whisper transcription with tiny model")
+            print(f"📝 Processing: {video_path}, Language: {language}")
+            print("⏳ Whisper is processing audio... (this may take 2-5 minutes)")
+            
             # Transcribe the audio
             result = self.model.transcribe(
                 video_path,
                 language=language,
                 word_timestamps=True,
-                verbose=False
+                verbose=True  # Enable verbose for progress visibility
             )
+            
+            print(f"✅ Whisper transcription completed! Found {len(result.get('segments', []))} segments")
             
             # Process segments into subtitle format
             subtitles = []

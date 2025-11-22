@@ -11,6 +11,42 @@ class JobManager:
     def _get_job_file_path(self, job_id: str) -> str:
         return os.path.join(self.jobs_dir, f"{job_id}.json")
     
+    def _get_project_subtitle_path(self, project_id: str) -> str:
+        """Get the path where project subtitles are stored."""
+        return os.path.join(self.jobs_dir, f"{project_id}_subtitles.json")
+    
+    def save_project_subtitles(self, project_id: str, subtitle_data: list, video_url: str = None) -> str:
+        """Save subtitle data for a project."""
+        subtitle_path = self._get_project_subtitle_path(project_id)
+        subtitle_info = {
+            "project_id": project_id,
+            "video_url": video_url,
+            "created_at": datetime.now().isoformat(),
+            "subtitle_data": subtitle_data
+        }
+        
+        try:
+            with open(subtitle_path, 'w') as f:
+                json.dump(subtitle_info, f, indent=2)
+            return subtitle_path
+        except Exception as e:
+            print(f"Error saving project subtitles: {e}")
+            return None
+    
+    def get_project_subtitles(self, project_id: str) -> Optional[Dict[str, Any]]:
+        """Get subtitle data for a project."""
+        subtitle_path = self._get_project_subtitle_path(project_id)
+        
+        if not os.path.exists(subtitle_path):
+            return None
+        
+        try:
+            with open(subtitle_path, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error reading project subtitles: {e}")
+            return None
+    
     def create_job(self, job_id: str, job_type: str, status: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new job with the given parameters."""
         job = {

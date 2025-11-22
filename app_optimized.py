@@ -184,6 +184,35 @@ def parse_time_to_seconds(time_input):
     
     raise ValueError(f"Unsupported time type: {type(time_input)}")
 
+@app.route('/performance-mode', methods=['POST'])
+def set_performance_mode():
+    """Switch between optimized and performance modes."""
+    try:
+        data = request.json
+        mode = data.get('mode', 'optimized').lower()
+        
+        if mode not in ['optimized', 'performance']:
+            return jsonify({"error": "Invalid mode. Use 'optimized' or 'performance'"}), 400
+        
+        response = {
+            "status": "success",
+            "current_mode": "optimized",  # This app is always optimized
+            "requested_mode": mode,
+            "message": f"Current instance runs in OPTIMIZED mode. For {mode.upper()} mode, use docker-compose.{mode}.yml"
+        }
+        
+        if mode == 'performance':
+            response["instructions"] = {
+                "step_1": "docker-compose down",
+                "step_2": "docker-compose -f docker-compose.performance.yml up -d --build",
+                "note": "Performance mode uses all available system resources"
+            }
+        
+        return jsonify(response)
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/health', methods=['GET'])
 def health_check():
     """Enhanced health check with resource information."""

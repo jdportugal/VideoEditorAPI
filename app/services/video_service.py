@@ -134,11 +134,24 @@ class VideoService:
             font_requested = font_path
         
         
+        # Check for both line-color and normal-color parameters for consistency
+        text_color = settings.get("line-color") or settings.get("normal-color", "#FFFFFF")
+        
+        # Clean up any double hash symbols
+        if text_color.startswith("##"):
+            text_color = "#" + text_color[2:]
+        
+        # Debug logging to see what color is being used
+        print(f"🎨 Color Debug - line-color: {settings.get('line-color')}")
+        print(f"🎨 Color Debug - normal-color: {settings.get('normal-color')}")
+        print(f"🎨 Color Debug - final text_color: {text_color}")
+        print(f"🎨 Color Debug - all settings: {list(settings.keys())}")
+        
         txt_clip = TextClip(
             text,
             fontsize=settings.get("font-size", 100),
             font=font_requested,
-            color=settings.get("line-color", "#FFFFFF"),
+            color=text_color,
             stroke_color=settings.get("outline-color", "#000000"),
             stroke_width=settings.get("outline-width", 3),
             method='caption' if len(text) > 50 else 'label'
@@ -170,9 +183,19 @@ class VideoService:
         """Create karaoke-style subtitle clips with word highlighting."""
         clips = []
         
-        # Use normal-color for both highlighting and normal text
-        highlight_color = settings.get("normal-color", "#FFFFFF")
-        normal_color = settings.get("normal-color", "#FFFFFF")
+        # Use color from line-color or normal-color (consistent with regular subtitle mode)
+        text_color = settings.get("line-color") or settings.get("normal-color", "#FFFFFF")
+        
+        # Clean up any double hash symbols
+        if text_color.startswith("##"):
+            text_color = "#" + text_color[2:]
+            
+        highlight_color = text_color
+        normal_color = text_color
+        
+        print(f"🎤 Karaoke Color Debug - line-color: {settings.get('line-color')}")
+        print(f"🎤 Karaoke Color Debug - normal-color: {settings.get('normal-color')}")
+        print(f"🎤 Karaoke Color Debug - final color: {text_color}")
         
         print(f"🎤 Creating karaoke clips for {len(subtitles)} segments")
         

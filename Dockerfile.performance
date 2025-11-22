@@ -1,0 +1,79 @@
+# High-Performance Dockerfile for maximum resource utilization
+FROM python:3.11-slim
+
+# Install system dependencies with full optimization support
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    imagemagick \
+    fonts-dejavu \
+    fonts-liberation \
+    git \
+    curl \
+    build-essential \
+    wget \
+    unzip \
+    htop \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean \
+    && sed -i 's/policy domain="path" rights="none" pattern="@\*"/policy domain="path" rights="read" pattern="@*"/' /etc/ImageMagick-7/policy.xml
+
+# Install additional performance fonts
+RUN mkdir -p /usr/share/fonts/truetype/luckiest-guy \
+    && wget -O /usr/share/fonts/truetype/luckiest-guy/LuckiestGuy-Regular.ttf \
+       "https://github.com/google/fonts/raw/main/apache/luckiestguy/LuckiestGuy-Regular.ttf" \
+    && fc-cache -f -v
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements
+COPY requirements.txt optimized_requirements.txt ./
+
+# Install Python dependencies with performance optimizations
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r optimized_requirements.txt \
+    && pip cache purge
+
+# Copy application code
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p temp uploads jobs static performance_charts
+
+# Set environment variables for maximum performance
+ENV FLASK_APP=app_performance.py
+ENV FLASK_ENV=production
+ENV PYTHONPATH=/app
+ENV PORT=8080
+
+# Performance optimization environment variables
+ENV OMP_NUM_THREADS=4
+ENV MKL_NUM_THREADS=4
+ENV VECLIB_MAXIMUM_THREADS=4
+ENV NUMEXPR_NUM_THREADS=4
+
+# PyTorch optimizations
+ENV PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:1024
+
+# Performance mode flags
+ENV PERFORMANCE_MODE=HIGH
+ENV MAX_MEMORY_USAGE=90
+ENV USE_ALL_CORES=true
+
+# Expose port
+EXPOSE 8080
+
+# Enhanced health check for performance version
+HEALTHCHECK --interval=30s --timeout=20s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Labels for performance container
+LABEL maintainer="VideoEditorAPI"
+LABEL version="performance-v1.0" 
+LABEL description="High-performance VideoEditorAPI using all system resources"
+LABEL performance.mode="maximum"
+LABEL performance.optimization="parallel-processing"
+LABEL performance.resource_usage="maximum"
+
+# Run the high-performance application
+CMD ["python", "app_performance.py"]

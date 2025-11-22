@@ -306,13 +306,13 @@ def download_file(url: str, destination_dir: str, filename: Optional[str] = None
 def _guess_extension_from_url(url: str) -> str:
     """Guess file extension from URL"""
     parsed_url = urlparse(url)
-    path = parsed_url.path.lower()
+    path = parsed_url.path.lower() if parsed_url.path else ""
     
     video_extensions = ['.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm']
     audio_extensions = ['.mp3', '.wav', '.aac', '.ogg', '.flac', '.m4a']
     
     for ext in video_extensions + audio_extensions:
-        if path.endswith(ext):
+        if path and path.endswith(ext):
             return ext
     
     if any(keyword in url.lower() for keyword in ['video', 'mp4', 'avi', 'mov']):

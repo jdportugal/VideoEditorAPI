@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  video-editor-api-performance:
+    build:
+      context: .
+      dockerfile: Dockerfile.performance
+    ports:
+      - "8080:8080"
+    environment:
+      - FLASK_ENV=production
+      - PYTHONPATH=/app
+      - PORT=8080
+      - PERFORMANCE_MODE=HIGH
+      - MAX_MEMORY_USAGE=90
+      - USE_ALL_CORES=true
+      # Performance optimizations - use actual CPU count
+      - OMP_NUM_THREADS=4
+      - MKL_NUM_THREADS=4
+      - VECLIB_MAXIMUM_THREADS=4
+      - NUMEXPR_NUM_THREADS=4
+      - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:1024
+    volumes:
+      - ./temp:/app/temp
+      - ./uploads:/app/uploads
+      - ./jobs:/app/jobs
+      - ./static:/app/static
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          # Use maximum available resources
+          cpus: '0'  # No CPU limit
+          memory: '0'  # No memory limit
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 60s
+    # Enable host networking for maximum performance (optional)
+    # network_mode: host
+
+volumes:
+  temp_data:
+  uploads_data:
+  jobs_data:
+  static_data:

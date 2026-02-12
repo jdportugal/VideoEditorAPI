@@ -109,6 +109,11 @@ class VideoService:
                                settings: Dict[str, Any], duration: float) -> TextClip:
         """Create a styled text clip based on settings."""
         
+        # Apply text transformation
+        if settings.get("text-transform") == "uppercase":
+            text = text.upper()
+            print(f"🔤 TEXT TRANSFORM: Converting to uppercase: '{text}'")
+        
         # Position mapping
         position_map = {
             "top-left": ("left", "top"),
@@ -128,11 +133,29 @@ class VideoService:
         
         # Create base text clip
         font_requested = settings.get("font-family", "DejaVu-Sans-Bold")
+        print(f"🎨 FONT DEBUG: Requested font = '{font_requested}'")
         
-        # Use full path for Luckiest Guy to ensure it's found
+        # Use full path for custom fonts to ensure they're found
         if font_requested == "Luckiest Guy":
             font_path = "/usr/share/fonts/truetype/luckiest-guy/LuckiestGuy-Regular.ttf"
             font_requested = font_path
+        elif font_requested == "Times Bold Italic":
+            # Bold italic condensed serif font similar to the image
+            font_path = "/usr/share/fonts/truetype/liberation/LiberationSerif-BoldItalic.ttf"
+            font_requested = font_path
+        elif font_requested == "Impact":
+            # Bold condensed sans-serif for strong impact
+            font_path = "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
+            font_requested = font_path
+        elif font_requested == "Anton":
+            # Bold condensed sans-serif Google Font, perfect for strong headlines and emphasis
+            font_path = "/usr/share/fonts/truetype/anton/Anton-Regular.ttf"
+            font_requested = font_path
+        elif font_requested == "Pixelify Sans":
+            # Pixel-inspired Google Font, perfect for gaming and retro aesthetic
+            # Use direct font path for proper pixelated rendering
+            font_requested = "/usr/share/fonts/truetype/pixelify-sans/PixelifySans-Variable.ttf"
+            print(f"🎨 PIXELIFY SANS MAPPED: {font_requested}")
         
         
         # Check for both line-color and normal-color parameters for consistency
@@ -148,18 +171,52 @@ class VideoService:
         print(f"🎨 Color Debug - final text_color: {text_color}")
         print(f"🎨 Color Debug - all settings: {list(settings.keys())}")
         
-        txt_clip = TextClip(
-            text,
-            fontsize=settings.get("font-size", 100),
-            font=font_requested,
-            color=text_color,
-            stroke_color=settings.get("outline-color", "#000000"),
-            stroke_width=settings.get("outline-width", 3),
-            method='caption' if len(text) > 50 else 'label'
-        ).set_duration(duration)
+        # Handle outline-width parameter properly - convert to float to handle both string and numeric inputs
+        outline_width = settings.get("outline-width", 3)
+        print(f"🎯 OUTLINE DEBUG: Raw outline-width from settings: {outline_width} (type: {type(outline_width)})")
         
+        # Convert to float to handle string inputs like "0" from JSON
+        try:
+            outline_width = float(outline_width)
+            print(f"🎯 OUTLINE DEBUG: Converted outline-width: {outline_width} (type: {type(outline_width)})")
+        except (ValueError, TypeError):
+            outline_width = 3.0  # Default fallback
+            print(f"🎯 OUTLINE DEBUG: Using fallback outline-width: {outline_width}")
+        
+        # Create TextClip with or without stroke based on outline-width
+        font_size = settings.get("font-size", 100)
+        print(f"🎨 FINAL FONT DEBUG: Using font = '{font_requested}', size = {font_size}, for text = '{text[:20]}...'")
+        if outline_width == 0.0:
+            print(f"🚫 NO OUTLINE: Creating TextClip without stroke parameters")
+            # No outline - exclude stroke parameters entirely
+            txt_clip = TextClip(
+                text,
+                fontsize=font_size,
+                font=font_requested,
+                color=text_color,
+                method='caption' if len(text) > 50 else 'label'
+            ).set_duration(duration)
+        else:
+            print(f"✏️ WITH OUTLINE: Creating TextClip with stroke_width={outline_width}")
+            # With outline - include stroke parameters
+            txt_clip = TextClip(
+                text,
+                fontsize=font_size,
+                font=font_requested,
+                color=text_color,
+                stroke_color=settings.get("outline-color", "#000000"),
+                stroke_width=int(outline_width),  # Convert back to int for MoviePy
+                method='caption' if len(text) > 50 else 'label'
+            ).set_duration(duration)
+        
+        # Check for custom percentage positioning first
+        if "bottom_offset_percent" in settings:
+            offset_percent = settings["bottom_offset_percent"] / 100.0
+            y_pos = int(video_size[1] * (1 - offset_percent))
+            txt_clip = txt_clip.set_position(('center', y_pos))
+            print(f"📍 Setting subtitle to {settings['bottom_offset_percent']}% from bottom: y={y_pos}")
         # Set position based on alignment with explicit pixel calculations
-        if h_align == "center" and v_align == "center":
+        elif h_align == "center" and v_align == "center":
             # True vertical and horizontal centering - calculate exact pixel position
             x_pos = 'center'
             y_pos = video_size[1] // 2  # Exact vertical center in pixels
@@ -229,7 +286,7 @@ class VideoService:
                         {
                             **settings, 
                             "line-color": highlight_color,
-                            "outline-width": settings.get("outline-width", 10) + 3,  # Thicker outline for highlighting
+                            "outline-width": max(0, settings.get("outline-width", 10) + (3 if settings.get("outline-width", 10) > 0 else 0)),  # Respect 0 outline
                             "font-size": settings.get("font-size", 120) + 10  # Slightly larger for emphasis
                         },
                         duration=word["end"] - word["start"]

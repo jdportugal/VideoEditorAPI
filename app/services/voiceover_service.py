@@ -5,6 +5,7 @@ Provides functionality to add voiceover audio to video clips with intelligent du
 
 import os
 import logging
+import math
 import moviepy.editor as mp
 from moviepy.video.fx.resize import resize
 from PIL import Image
@@ -145,20 +146,22 @@ class VoiceoverService:
         
         return slowed_video
     
-    def create_video_from_image_with_zoom(self, image_path, duration, output_size=(1920, 1080), zoom_factor=1.0):
+    def create_video_from_image_with_zoom(self, image_path, duration, output_size=(1080, 1080), zoom_factor=1.0):
         """
-        Create a video from an image with a subtle zoom effect.
+        Create a video from an image with a subtle zoom-in effect from center.
         
         Args:
             image_path (str): Path to the input image
             duration (float): Duration of the video in seconds
             output_size (tuple): Output video resolution (width, height)
-            zoom_factor (float): Maximum zoom factor (1.0 = no zoom, 1.1 = 10% zoom)
+            zoom_factor (float): Maximum zoom factor (1.0 = no zoom, 1.1 = 10% zoom in)
         
         Returns:
             VideoFileClip: Video clip with zoom effect
         """
-        logger.info(f"Creating video from image {image_path} with {duration:.1f}s duration")
+        # Extract duration if it's an AudioClip object
+        actual_duration = duration.duration if hasattr(duration, 'duration') else duration
+        logger.info(f"Creating video from image {image_path} with {actual_duration:.1f}s duration, zoom factor: {zoom_factor}")
         
         try:
             # Load and process the image
@@ -177,66 +180,82 @@ class VoiceoverService:
             target_width, target_height = output_size
             target_aspect = target_width / target_height
             
-            # Calculate crop/scale to fill the target aspect ratio
+            # Calculate initial size to fit the target dimensions
             if img_aspect > target_aspect:
-                # Image is wider - fit to height
-                new_height = target_height * zoom_factor
-                new_width = new_height * img_aspect
+                # Image is wider - fit to width initially
+                initial_width = target_width
+                initial_height = target_width / img_aspect
             else:
-                # Image is taller - fit to width
-                new_width = target_width * zoom_factor
-                new_height = new_width / img_aspect
+                # Image is taller - fit to height initially
+                initial_height = target_height
+                initial_width = target_height * img_aspect
             
             # Create base clip from image
             clip = mp.ImageClip(img_array)
             
-            # Resize to initial zoom size
-            clip = clip.resize(width=int(new_width), height=int(new_height))
-            
-            # Set duration and fps
-            clip = clip.set_duration(duration).set_fps(24)
+            # Set duration and fps (higher FPS for smoother zoom)
+            clip = clip.set_duration(actual_duration).set_fps(60)
             
             # Apply zoom effect only if zoom_factor > 1.0
             if zoom_factor > 1.0:
-                # Use MoviePy's smooth scaling approach for jitter-free zoom
-                logger.info(f"Applying smooth zoom effect from 1.0 to {zoom_factor}")
+                # Use PIL-based frame processing for smooth center-focused zoom
+                logger.info(f"🎬 Applying PIL-based zoom effect from 1.0 to {zoom_factor}")
                 
-                # Start with oversized clip for smooth zoom
-                initial_scale = zoom_factor
-                initial_width = int(target_width * initial_scale)
-                initial_height = int(target_height * initial_scale)
+                # First resize to target dimensions
+                clip = clip.resize((target_width, target_height))
                 
-                # Resize the clip to the maximum zoom size
-                clip = clip.resize((initial_width, initial_height))
+                # Calculate zoom ratio per second based on zoom factor and duration
+                total_zoom_percent = (zoom_factor - 1.0)
+                zoom_ratio = total_zoom_percent / actual_duration
                 
-                # Create smooth zoom animation using MoviePy's resize effect over time
-                def smooth_resize(t):
-                    """Calculate smooth resize factor over time."""
-                    progress = t / duration
-                    # Zoom from initial_scale down to 1.0 (reverse zoom for smooth effect)
-                    current_scale = initial_scale - (initial_scale - 1.0) * progress
-                    return current_scale
+                def zoom_in_effect(get_frame, t):
+                    """
+                    PIL-based zoom effect with proper center cropping.
+                    Based on proven smooth zoom implementation.
+                    """
+                    img = Image.fromarray(get_frame(t))
+                    base_size = img.size
+
+                    new_size = [
+                        math.ceil(img.size[0] * (1 + (zoom_ratio * t))),
+                        math.ceil(img.size[1] * (1 + (zoom_ratio * t)))
+                    ]
+
+                    # The new dimensions must be even.
+                    new_size[0] = new_size[0] + (new_size[0] % 2)
+                    new_size[1] = new_size[1] + (new_size[1] % 2)
+
+                    img = img.resize(new_size, Image.LANCZOS)
+
+                    x = math.ceil((new_size[0] - base_size[0]) / 2)
+                    y = math.ceil((new_size[1] - base_size[1]) / 2)
+
+                    img = img.crop([
+                        x, y, new_size[0] - x, new_size[1] - y
+                    ]).resize(base_size, Image.LANCZOS)
+
+                    result = np.array(img)
+                    img.close()
+
+                    return result
                 
-                # Apply time-varying resize for smooth zoom animation
-                clip = clip.resize(lambda t: smooth_resize(t)).set_position('center')
+                # Apply the PIL zoom transformation using fl method
+                clip = clip.fl(zoom_in_effect, apply_to=['mask'])
                 
-                # Crop to final target size to remove any overscan
-                clip = clip.crop(width=target_width, height=target_height, x_center=initial_width//2, y_center=initial_height//2)
             else:
-                # No zoom - just resize to target dimensions
+                # No zoom - just resize to target dimensions with proper aspect ratio
                 clip = clip.resize((target_width, target_height))
             
-            # The zoom function ensures the output is already the correct size
-            
-            logger.info(f"Created video clip: {target_width}x{target_height}, {duration:.1f}s with zoom {zoom_factor}")
+            logger.info(f"Created video clip: {target_width}x{target_height}, {actual_duration:.1f}s with zoom {zoom_factor}")
             return clip
             
         except Exception as e:
             logger.error(f"Error creating video from image: {e}")
             # Fallback: create simple static video without zoom
             try:
-                clip = mp.ImageClip(image_path, duration=duration)
-                clip = clip.resize((target_width, target_height)).set_fps(24)
+                clip = mp.ImageClip(image_path, duration=actual_duration)
+                clip = clip.resize((target_width, target_height)).set_fps(60)
+                logger.info("Using fallback: static image without zoom")
                 return clip
             except Exception as fallback_e:
                 logger.error(f"Fallback also failed: {fallback_e}")

@@ -1,12 +1,12 @@
-import whisper
+from faster_whisper import WhisperModel
 import os
 from typing import List, Dict, Any
 import json
 
 class SubtitleService:
     def __init__(self):
-        # Load Whisper model - using tiny for maximum speed on constrained systems
-        self.model = whisper.load_model("tiny")
+        # Load Faster Whisper model - using tiny for maximum speed on constrained systems
+        self.model = WhisperModel("tiny", device="cpu", compute_type="int8")
     
     def generate_subtitles(self, video_path: str, language: str = "en", timing_offset: float = 0.0) -> List[Dict[str, Any]]:
         """
@@ -26,36 +26,37 @@ class SubtitleService:
             print("⏳ Whisper is processing audio... (this may take 2-5 minutes)")
             
             # Transcribe the audio
-            result = self.model.transcribe(
+            segments, info = self.model.transcribe(
                 video_path,
                 language=language,
-                word_timestamps=True,
-                verbose=True  # Enable verbose for progress visibility
+                word_timestamps=True
             )
             
-            print(f"✅ Whisper transcription completed! Found {len(result.get('segments', []))} segments")
+            # Convert generator to list for processing
+            segments = list(segments)
+            print(f"✅ Whisper transcription completed! Found {len(segments)} segments")
             
             # Process segments into subtitle format
             subtitles = []
-            for i, segment in enumerate(result["segments"]):
+            for i, segment in enumerate(segments):
                 # Apply timing offset
-                adjusted_start = max(0, segment["start"] + timing_offset)
-                adjusted_end = max(adjusted_start + 0.1, segment["end"] + timing_offset)
+                adjusted_start = max(0, segment.start + timing_offset)
+                adjusted_end = max(adjusted_start + 0.1, segment.end + timing_offset)
                 
                 subtitle_segment = {
                     "start": adjusted_start,
                     "end": adjusted_end,
-                    "text": segment["text"].strip(),
+                    "text": segment.text.strip(),
                     "words": []
                 }
                 
                 # Add word-level timestamps if available
-                if "words" in segment:
-                    for j, word in enumerate(segment["words"]):
-                        word_start = max(0, word["start"] + timing_offset)
-                        word_end = max(word_start + 0.1, word["end"] + timing_offset)
+                if hasattr(segment, 'words') and segment.words:
+                    for j, word in enumerate(segment.words):
+                        word_start = max(0, word.start + timing_offset)
+                        word_end = max(word_start + 0.1, word.end + timing_offset)
                         subtitle_segment["words"].append({
-                            "word": word["word"],
+                            "word": word.word,
                             "start": word_start,
                             "end": word_end
                         })

@@ -51,6 +51,18 @@ class VideoFilterService:
                     'noise_intensity': 0.1,
                     'chroma_shift': 2
                 }
+            },
+            'fish-eye': {
+                'name': 'Barrel Distortion',
+                'description': 'Barrel distortion effect that maintains rectangular frame with curved content',
+                'parameters': {
+                    'distortion_strength': 0.2,
+                    'zoom_factor': 1.0,
+                    'circular_crop': False,
+                    'vignette_intensity': 0.0,
+                    'center_x': 0.5,
+                    'center_y': 0.5
+                }
             }
         }
     
@@ -219,6 +231,99 @@ class VideoFilterService:
         
         return frame
     
+    def apply_fish_eye_filter(self, frame, params):
+        """Apply barrel distortion effect to a single frame (maintains rectangular frame)."""
+        height, width = frame.shape[:2]
+        
+        # Get parameters
+        distortion_strength = params.get('distortion_strength', 0.8)
+        zoom_factor = params.get('zoom_factor', 1.2)
+        circular_crop = params.get('circular_crop', True)
+        vignette_intensity = params.get('vignette_intensity', 0.3)
+        center_x_ratio = params.get('center_x', 0.5)
+        center_y_ratio = params.get('center_y', 0.5)
+        
+        # Calculate center point
+        center_x = int(width * center_x_ratio)
+        center_y = int(height * center_y_ratio)
+        
+        # Create coordinate grids
+        y, x = np.ogrid[:height, :width]
+        x = x.astype(np.float32) - center_x
+        y = y.astype(np.float32) - center_y
+        
+        # Normalize coordinates to [-1, 1] range based on frame dimensions
+        # This ensures distortion applies to entire rectangular frame
+        x_norm = x / (width / 2.0)
+        y_norm = y / (height / 2.0)
+        
+        # Calculate radial distance in normalized space
+        r_norm = np.sqrt(x_norm*x_norm + y_norm*y_norm)
+        
+        # Apply barrel distortion formula
+        # For barrel distortion: r_distorted = r * (1 + k * r^2)
+        # For pincushion (inverse): r_distorted = r / (1 + k * r^2)
+        if distortion_strength >= 0:
+            # Barrel distortion (bulge outward)
+            r_distorted = r_norm * (1 + distortion_strength * r_norm * r_norm)
+        else:
+            # Pincushion distortion (squeeze inward) 
+            r_distorted = r_norm / (1 + abs(distortion_strength) * r_norm * r_norm)
+        
+        # Apply zoom factor
+        r_distorted *= zoom_factor
+        
+        # Convert back to pixel coordinates
+        # Avoid division by zero
+        scale = np.where(r_norm > 1e-6, r_distorted / r_norm, 1)
+        x_new = (x_norm * scale * (width / 2.0) + center_x).astype(np.float32)
+        y_new = (y_norm * scale * (height / 2.0) + center_y).astype(np.float32)
+        
+        # Apply the distortion mapping with proper border handling
+        # For rectangular barrel distortion, use BORDER_CONSTANT to avoid reflections
+        # For circular fish-eye, BORDER_REFLECT can be used
+        border_mode = cv2.BORDER_CONSTANT
+        border_value = [0, 0, 0]  # Black borders
+        
+        fish_eye_frame = cv2.remap(frame, x_new, y_new, cv2.INTER_LINEAR, 
+                                 borderMode=border_mode, borderValue=border_value)
+        
+        # Apply circular crop if requested (for traditional fish-eye look)
+        if circular_crop:
+            # Calculate radius for circular mask based on smaller dimension
+            mask_radius = min(center_x, center_y, width - center_x, height - center_y)
+            
+            # Create circular mask
+            mask = np.zeros((height, width), dtype=np.uint8)
+            cv2.circle(mask, (center_x, center_y), int(mask_radius * 0.95), 255, -1)
+            
+            # Apply smooth edges to the mask
+            mask_blur = cv2.GaussianBlur(mask, (21, 21), 0)
+            mask_norm = mask_blur.astype(np.float32) / 255.0
+            
+            # Apply mask to each channel
+            for c in range(3):
+                fish_eye_frame[:, :, c] = (fish_eye_frame[:, :, c].astype(np.float32) * mask_norm).astype(np.uint8)
+        
+        # Add optional vignette effect
+        if vignette_intensity > 0:
+            # Create vignette mask
+            y_v, x_v = np.ogrid[:height, :width]
+            distance = np.sqrt((x_v - center_x)**2 + (y_v - center_y)**2)
+            
+            # Use diagonal for vignette normalization to cover full frame
+            max_distance = np.sqrt((width/2)**2 + (height/2)**2)
+            
+            # Normalize distance and apply vignette
+            distance_norm = distance / max_distance
+            vignette = 1 - vignette_intensity * distance_norm**2
+            vignette = np.clip(vignette, 0, 1)
+            
+            # Apply vignette
+            fish_eye_frame = (fish_eye_frame.astype(np.float32) * vignette[:, :, np.newaxis]).astype(np.uint8)
+        
+        return fish_eye_frame
+    
     def apply_video_filter(self, input_path, output_path, filter_type='crt', custom_params=None):
         """
         Apply video filter to a video file.
@@ -262,6 +367,8 @@ class VideoFilterService:
                     filtered_frame = self.apply_vintage_filter(frame_bgr, params)
                 elif filter_type == 'vhs':
                     filtered_frame = self.apply_vhs_filter(frame_bgr, params)
+                elif filter_type == 'fish-eye':
+                    filtered_frame = self.apply_fish_eye_filter(frame_bgr, params)
                 else:
                     filtered_frame = frame_bgr
                 

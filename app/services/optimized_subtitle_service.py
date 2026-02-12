@@ -1,4 +1,4 @@
-import whisper
+from faster_whisper import WhisperModel
 import os
 import gc
 import psutil
@@ -6,7 +6,6 @@ import tempfile
 import json
 import logging
 from typing import List, Dict, Any, Optional
-import torch
 
 # Configure logging for performance monitoring
 logging.basicConfig(level=logging.INFO)

@@ -53,6 +53,14 @@ class AspectRatioService:
             'stretch': {
                 'name': 'Stretch',
                 'description': 'Stretch video to exact dimensions (may distort aspect ratio)'
+            },
+            'square-fill': {
+                'name': 'Square Center Fill (9:16 Output)',
+                'description': 'Creates 9:16 portrait video with content completely filling a square region in the center (may crop to fill)'
+            },
+            'square': {
+                'name': 'True Square (1:1)',
+                'description': 'Creates a true square video output (1:1 aspect ratio) with content scaled to fit or fill'
             }
         }
     
@@ -249,6 +257,172 @@ class AspectRatioService:
         """Stretch video to exact target dimensions."""
         return resize(video, (target_width, target_height))
     
+    def apply_square_fill(self, video, target_width, target_height):
+        """
+        Scale video to completely fill a square region centered in a 9:16 output.
+        Creates a 9:16 portrait video with the content completely filling a square area in the center.
+        Video is scaled to fill the entire square (may crop to ensure full coverage).
+        """
+        original_width, original_height = video.w, video.h
+        
+        # Force output to be 9:16 aspect ratio (portrait)
+        # Calculate 9:16 dimensions based on target width or default
+        if target_width:
+            output_width = target_width
+            output_height = int(output_width * 16 / 9)
+        else:
+            # Default to 1080x1920 (9:16 portrait)
+            output_width = 1080
+            output_height = 1920
+        
+        # Ensure dimensions are even numbers
+        output_width = output_width if output_width % 2 == 0 else output_width - 1
+        output_height = output_height if output_height % 2 == 0 else output_height - 1
+        
+        # Calculate square region size (use width of 9:16 frame for square)
+        square_size = output_width
+        
+        # Calculate scale factors for both width and height to fill the square completely
+        width_scale = square_size / original_width
+        height_scale = square_size / original_height
+        
+        # Use the larger scale factor to ensure the square is completely filled
+        # This may result in cropping, but guarantees full coverage
+        scale_factor = max(width_scale, height_scale)
+        
+        # Apply the scale factor to both dimensions
+        new_width = int(original_width * scale_factor)
+        new_height = int(original_height * scale_factor)
+        
+        # Ensure even dimensions for video encoding
+        new_width = new_width if new_width % 2 == 0 else new_width - 1
+        new_height = new_height if new_height % 2 == 0 else new_height - 1
+        
+        # Resize the video proportionally
+        resized_video = resize(video, (new_width, new_height))
+        
+        # Create a 9:16 background
+        from moviepy.video.VideoClip import ColorClip
+        background = ColorClip(
+            size=(output_width, output_height), 
+            color=(0, 0, 0),  # Black background
+            duration=video.duration
+        )
+        
+        # Calculate positioning for the square region in the 9:16 frame
+        # Center the square region vertically in the 9:16 frame
+        square_y_offset = (output_height - square_size) // 2  # Center square vertically
+        
+        # If video is larger than square, crop it by centering within the square
+        if new_width > square_size or new_height > square_size:
+            # Calculate crop offsets to center the video within the square
+            crop_x = max(0, (new_width - square_size) // 2)
+            crop_y = max(0, (new_height - square_size) // 2)
+            
+            # Crop the resized video to fit exactly in the square
+            resized_video = resized_video.crop(
+                x1=crop_x, 
+                y1=crop_y,
+                x2=crop_x + square_size,
+                y2=crop_y + square_size
+            )
+            
+            final_x_offset = 0  # Square starts at left edge of output
+            final_y_offset = square_y_offset
+        else:
+            # Center the video within the square region
+            video_x_offset = (square_size - new_width) // 2
+            video_y_offset = (square_size - new_height) // 2
+            
+            final_x_offset = video_x_offset
+            final_y_offset = square_y_offset + video_y_offset
+        
+        # Composite the resized video onto the 9:16 background
+        final_video = mp.CompositeVideoClip([
+            background,
+            resized_video.set_position((final_x_offset, final_y_offset))
+        ])
+        
+        return final_video
+    
+    def apply_square(self, video, target_width, target_height):
+        """
+        Create a true square (1:1) video output.
+        Scales content to completely fill the square dimensions.
+        
+        Args:
+            video: MoviePy VideoFileClip
+            target_width (int): Target width (will be used for both width and height to create square)
+            target_height (int): Target height (ignored, square uses target_width for both dimensions)
+        
+        Returns:
+            VideoFileClip: Square video with 1:1 aspect ratio
+        """
+        # Get original dimensions
+        original_width = video.w
+        original_height = video.h
+        
+        # For square output, use the target_width as both width and height
+        square_size = target_width
+        
+        logger.info(f"🟫 Creating square video: {original_width}x{original_height} → {square_size}x{square_size}")
+        
+        # Calculate scale factors for both dimensions
+        width_scale = square_size / original_width
+        height_scale = square_size / original_height
+        
+        # Use the larger scale factor to ensure the square is completely filled (may crop)
+        scale_factor = max(width_scale, height_scale)
+        
+        # Calculate new dimensions after scaling
+        new_width = int(original_width * scale_factor)
+        new_height = int(original_height * scale_factor)
+        
+        logger.info(f"🔍 Scale factor: {scale_factor:.3f}, intermediate size: {new_width}x{new_height}")
+        
+        # Apply scaling
+        resized_video = video.resize((new_width, new_height))
+        
+        # If the scaled video is larger than the square, crop it to fit exactly
+        if new_width > square_size or new_height > square_size:
+            # Calculate crop offsets to center the video within the square
+            crop_x = max(0, (new_width - square_size) // 2)
+            crop_y = max(0, (new_height - square_size) // 2)
+            
+            logger.info(f"✂️ Cropping to center: offset ({crop_x}, {crop_y})")
+            
+            # Crop the resized video to fit exactly in the square
+            final_video = resized_video.crop(
+                x1=crop_x, y1=crop_y,
+                x2=crop_x + square_size,
+                y2=crop_y + square_size
+            )
+        else:
+            # Video fits within square, center it with black background
+            logger.info(f"🎯 Centering video in square background")
+            
+            # Create black square background
+            background = mp.ColorClip(
+                size=(square_size, square_size),
+                color=(0, 0, 0),
+                duration=video.duration
+            )
+            
+            # Center the scaled video within the square
+            x_offset = (square_size - new_width) // 2
+            y_offset = (square_size - new_height) // 2
+            
+            logger.info(f"📍 Positioning video at offset ({x_offset}, {y_offset})")
+            
+            # Composite the video onto the square background
+            final_video = mp.CompositeVideoClip([
+                background,
+                resized_video.set_position((x_offset, y_offset))
+            ])
+        
+        logger.info(f"✅ Square video created: {final_video.w}x{final_video.h}")
+        return final_video
+    
     def change_aspect_ratio(self, input_path, output_path, aspect_ratio, scale_mode='fit', target_height=None, job_manager=None, job_id=None):
         """
         Change video aspect ratio with detailed progress logging.
@@ -329,6 +503,12 @@ class AspectRatioService:
             elif scale_mode == 'stretch':
                 logger.info(f"📏 Applying stretch scaling (may distort)")
                 processed_video = self.apply_stretch(video, target_width, target_height)
+            elif scale_mode == 'square-fill':
+                logger.info(f"⬜ Applying square center fill (9:16 portrait output, fully filled square in center)")
+                processed_video = self.apply_square_fill(video, target_width, target_height)
+            elif scale_mode == 'square':
+                logger.info(f"🟫 Applying true square (1:1) output")
+                processed_video = self.apply_square(video, target_width, target_height)
             
             logger.info(f"✅ Scaling complete, final dimensions: {processed_video.w}x{processed_video.h}")
             

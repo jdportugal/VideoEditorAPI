@@ -12,7 +12,14 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean
 
 # Create a simple font directory (skip heavy fonts for memory efficiency)
-RUN mkdir -p /usr/share/fonts/truetype/dejavu
+RUN mkdir -p /usr/share/fonts/truetype/dejavu \
+    && mkdir -p /usr/share/fonts/truetype/anton \
+    && wget -O /usr/share/fonts/truetype/anton/Anton-Regular.ttf \
+       "https://github.com/google/fonts/raw/main/ofl/anton/Anton-Regular.ttf" \
+    && mkdir -p /usr/share/fonts/truetype/pixelify-sans \
+    && wget -O /usr/share/fonts/truetype/pixelify-sans/PixelifySans-Variable.ttf \
+       "https://github.com/google/fonts/raw/main/ofl/pixelifysans/PixelifySans%5Bwght%5D.ttf" \
+    && fc-cache -f
 
 # Set working directory
 WORKDIR /app

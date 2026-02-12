@@ -21,6 +21,18 @@ RUN mkdir -p /usr/share/fonts/truetype/luckiest-guy \
        "https://github.com/google/fonts/raw/main/apache/luckiestguy/LuckiestGuy-Regular.ttf" \
     && fc-cache -f -v
 
+# Download and install Anton font
+RUN mkdir -p /usr/share/fonts/truetype/anton \
+    && wget -O /usr/share/fonts/truetype/anton/Anton-Regular.ttf \
+       "https://github.com/google/fonts/raw/main/ofl/anton/Anton-Regular.ttf" \
+    && fc-cache -f -v
+
+# Download and install Pixelify Sans font
+RUN mkdir -p /usr/share/fonts/truetype/pixelify-sans \
+    && wget -O /usr/share/fonts/truetype/pixelify-sans/PixelifySans-Variable.ttf \
+       "https://github.com/google/fonts/raw/main/ofl/pixelifysans/PixelifySans%5Bwght%5D.ttf" \
+    && fc-cache -f -v
+
 # Set working directory
 WORKDIR /app
 
@@ -28,7 +40,8 @@ WORKDIR /app
 COPY requirements.txt optimized_requirements.txt ./
 
 # Install Python dependencies (including optimization dependencies)
-RUN pip install --no-cache-dir -r optimized_requirements.txt
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
+    && pip install --no-cache-dir -r optimized_requirements.txt
 
 # Copy application code
 COPY . .

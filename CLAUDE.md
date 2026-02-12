@@ -235,13 +235,29 @@ Content-Type: application/json
 
 {
   "url": "https://drive.google.com/uc?id=YOUR_FILE_ID&export=download",
-  "filter_type": "crt",
-  "custom_parameters": {      // Optional: override default parameters
-    "scanline_intensity": 0.3,
-    "curvature": 0.02
+  "filter_type": "fish-eye",   // crt, vintage, vhs, fish-eye
+  "custom_parameters": {       // Optional: override default parameters
+    "distortion_strength": 0.8,
+    "zoom_factor": 1.2,
+    "circular_crop": true,
+    "vignette_intensity": 0.3
   }
 }
 ```
+
+**Available Video Filters:**
+- `crt`: Retro CRT monitor effect with scanlines and curvature
+- `vintage`: Old film effect with grain, sepia tone, and vignette
+- `vhs`: VHS tape effect with tracking lines and color bleeding
+- `fish-eye`: Fish-eye lens effect with wide-angle circular distortion
+
+**Fish-Eye Filter Parameters:**
+- `distortion_strength` (0.0-2.0): Intensity of the fish-eye distortion effect
+- `zoom_factor` (0.5-2.0): Zoom level applied during distortion
+- `circular_crop` (true/false): Apply circular cropping for authentic fisheye look
+- `vignette_intensity` (0.0-1.0): Darkness intensity at the edges
+- `center_x` (0.0-1.0): Horizontal center point (0.5 = center)
+- `center_y` (0.0-1.0): Vertical center point (0.5 = center)
 
 #### List Available Video Filters
 ```http
@@ -260,11 +276,32 @@ Content-Type: application/json
 
 {
   "url": "https://drive.google.com/uc?id=YOUR_FILE_ID&export=download",
-  "target_ratio": "9:16",     // 16:9, 9:16, 4:3, 3:4, 1:1
-  "scale_mode": "fill",       // fit, fill, stretch
+  "target_ratio": "1:1",      // 16:9, 9:16, 4:3, 3:4, 1:1, 21:9, 2:1, 16:10, 3:2, 2:3
+  "scale_mode": "square-fill", // fit, fill, stretch, square-fill
   "background_color": "#000000"  // Optional: for fit mode
 }
 ```
+
+**Scale Modes:**
+- `fit`: Scale to fit within dimensions, maintaining aspect ratio (letterboxing/pillarboxing)
+- `fill`: Scale to fill dimensions completely (may crop content)
+- `stretch`: Stretch to exact dimensions (may distort aspect ratio)
+- `square-fill`: Creates 9:16 portrait video with content completely filling a square region in the center (may crop to ensure full coverage)
+
+**Example: Create 9:16 portrait video with fully filled center square**
+```json
+{
+  "url": "https://drive.google.com/uc?id=YOUR_FILE_ID&export=download",
+  "target_ratio": "1:1",
+  "scale_mode": "square-fill"
+}
+```
+This will:
+- Create a 9:16 portrait video output (1080x1920)
+- Scale your video to completely fill a 1080x1080 square region in the center
+- Center the square region vertically with black bars above and below
+- May crop video content to ensure the square is completely filled (no gaps)
+- Perfect for mobile displays, TikTok, Instagram Stories with guaranteed square fill
 
 #### List Aspect Ratios
 ```http
@@ -379,9 +416,29 @@ POST /admin/cleanup
 - **Utils**: python-dotenv, numpy<2.0.0
 
 ### Font Requirements
-- Default font: "Luckiest Guy" at `/usr/share/fonts/truetype/luckiest-guy/LuckiestGuy-Regular.ttf`
-- Fallback: "DejaVu-Sans-Bold"
-- Ensure fonts are available in deployment environment
+**Available Fonts:**
+- **"Luckiest Guy"**: Fun, decorative font at `/usr/share/fonts/truetype/luckiest-guy/LuckiestGuy-Regular.ttf`
+- **"Times Bold Italic"**: Bold italic serif font for dramatic text (like editorial/magazine style)
+- **"Impact"**: Bold condensed sans-serif for strong impact text
+- **"Anton"**: Bold condensed sans-serif Google Font, perfect for strong headlines and emphasis
+- **"Pixelify Sans"**: Pixel-inspired Google Font, perfect for gaming and retro aesthetic
+- **"DejaVu-Sans-Bold"**: Default fallback font
+
+**Usage in API:**
+```json
+{
+  "font-family": "Times Bold Italic",  // New dramatic serif font
+  "font-size": 80,
+  "line-color": "#FFFFFF"
+}
+```
+
+**Font Locations:**
+- Luckiest Guy: `/usr/share/fonts/truetype/luckiest-guy/LuckiestGuy-Regular.ttf`
+- Times Bold Italic: `/usr/share/fonts/truetype/liberation/LiberationSerif-BoldItalic.ttf`
+- Impact: `/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf`
+- Anton: `/usr/share/fonts/truetype/anton/Anton-Regular.ttf`
+- Pixelify Sans: `/usr/share/fonts/truetype/pixelify-sans/PixelifySans-Variable.ttf`
 
 ### Google Drive Integration
 - Enhanced download with 6 fallback strategies

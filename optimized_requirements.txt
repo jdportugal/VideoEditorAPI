@@ -1,7 +1,9 @@
 Flask==3.0.0
 Flask-CORS==4.0.0
 requests==2.31.0
-openai-whisper==20231117
+setuptools>=68.0.0
+# Using faster-whisper as alternative to openai-whisper due to build issues
+faster-whisper==1.1.0
 torch==2.0.1
 torchaudio==2.0.2
 moviepy==1.0.3

@@ -21,6 +21,12 @@ RUN apt-get update && apt-get install -y \
 RUN mkdir -p /usr/share/fonts/truetype/luckiest-guy \
     && wget -O /usr/share/fonts/truetype/luckiest-guy/LuckiestGuy-Regular.ttf \
        "https://github.com/google/fonts/raw/main/apache/luckiestguy/LuckiestGuy-Regular.ttf" \
+    && mkdir -p /usr/share/fonts/truetype/anton \
+    && wget -O /usr/share/fonts/truetype/anton/Anton-Regular.ttf \
+       "https://github.com/google/fonts/raw/main/ofl/anton/Anton-Regular.ttf" \
+    && mkdir -p /usr/share/fonts/truetype/pixelify-sans \
+    && wget -O /usr/share/fonts/truetype/pixelify-sans/PixelifySans-Variable.ttf \
+       "https://github.com/google/fonts/raw/main/ofl/pixelifysans/PixelifySans%5Bwght%5D.ttf" \
     && fc-cache -f -v
 
 # Set working directory

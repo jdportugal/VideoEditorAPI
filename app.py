@@ -945,6 +945,10 @@ def process_subtitle_job(job_id, settings):
         output_path = f"temp/{job_id}_output.mp4"
         word_mode = settings.get('word_level_mode', 'karaoke')
         
+        # Debug: Print settings being passed to video service
+        print(f"📋 JOB SETTINGS DEBUG: Full settings object: {settings}")
+        print(f"📋 JOB SETTINGS DEBUG: settings['settings']: {settings.get('settings', 'NOT FOUND')}")
+        
         video_service.add_subtitles_to_video(
             video_path,
             subtitle_data,

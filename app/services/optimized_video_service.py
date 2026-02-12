@@ -351,7 +351,7 @@ class OptimizedVideoService:
                             {
                                 **settings, 
                                 "line-color": settings.get("normal-color", "#FFFFFF"),
-                                "outline-width": settings.get("outline-width", 10) + 2,
+                                "outline-width": max(0, settings.get("outline-width", 10) + (2 if settings.get("outline-width", 10) > 0 else 0)),
                                 "font-size": max(60, settings.get("font-size", 120) - 20)  # Smaller font for memory
                             },
                             duration=word["end"] - word["start"]
@@ -387,22 +387,65 @@ class OptimizedVideoService:
         # Use smaller font sizes for memory efficiency
         font_size = min(settings.get("font-size", 80), 80)  # Cap at 80px
         
-        # Use simpler font to reduce memory
-        font_requested = "DejaVu-Sans-Bold"  # Always use simple font for optimization
+        # Use requested font with fallback for memory efficiency
+        font_requested = settings.get("font-family", "DejaVu-Sans-Bold")
         
-        txt_clip = TextClip(
-            text,
-            fontsize=font_size,
-            font=font_requested,
-            color=settings.get("line-color", "#FFFFFF"),
-            stroke_color=settings.get("outline-color", "#000000"),
-            stroke_width=min(settings.get("outline-width", 3), 5),  # Limit outline width
-            method='label'  # Always use label for memory efficiency
-        ).set_duration(duration)
+        # Map custom fonts to their paths
+        if font_requested == "Anton":
+            font_path = "/usr/share/fonts/truetype/anton/Anton-Regular.ttf"
+            font_requested = font_path
+        elif font_requested == "Luckiest Guy":
+            font_path = "/usr/share/fonts/truetype/luckiest-guy/LuckiestGuy-Regular.ttf"
+            font_requested = font_path
+        elif font_requested == "Pixelify Sans":
+            # Use direct font path for proper pixelated rendering
+            font_requested = "/usr/share/fonts/truetype/pixelify-sans/PixelifySans-Variable.ttf"
         
-        # Set position
-        if h_align == "center" and v_align == "bottom":
-            txt_clip = txt_clip.set_position(('center', video_size[1] - 100))
+        # Handle outline-width parameter properly - convert to float to handle both string and numeric inputs
+        outline_width = settings.get("outline-width", 2)
+        print(f"🎯 OUTLINE DEBUG (OPTIMIZED): Raw outline-width from settings: {outline_width} (type: {type(outline_width)})")
+        
+        # Convert to float to handle string inputs like "0" from JSON
+        try:
+            outline_width = float(outline_width)
+            print(f"🎯 OUTLINE DEBUG (OPTIMIZED): Converted outline-width: {outline_width} (type: {type(outline_width)})")
+        except (ValueError, TypeError):
+            outline_width = 2.0  # Default fallback
+            print(f"🎯 OUTLINE DEBUG (OPTIMIZED): Using fallback outline-width: {outline_width}")
+        
+        # Create TextClip with or without stroke based on outline-width
+        if outline_width == 0.0:
+            print(f"🚫 NO OUTLINE (OPTIMIZED): Creating TextClip without stroke parameters")
+            # No outline - exclude stroke parameters entirely
+            txt_clip = TextClip(
+                text,
+                fontsize=font_size,
+                font=font_requested,
+                color=settings.get("line-color", "#FFFFFF"),
+                method='label'  # Always use label for memory efficiency
+            ).set_duration(duration)
+        else:
+            print(f"✏️ WITH OUTLINE (OPTIMIZED): Creating TextClip with stroke_width={outline_width}")
+            # With outline - include stroke parameters
+            txt_clip = TextClip(
+                text,
+                fontsize=font_size,
+                font=font_requested,
+                color=settings.get("line-color", "#FFFFFF"),
+                stroke_color=settings.get("outline-color", "#000000"),
+                stroke_width=int(outline_width),  # Convert back to int for MoviePy
+                method='label'  # Always use label for memory efficiency
+            ).set_duration(duration)
+        
+        # Set position with custom percentage support
+        if "bottom_offset_percent" in settings:
+            # Custom positioning: X% from bottom
+            offset_percent = settings["bottom_offset_percent"] / 100.0
+            y_pos = int(video_size[1] * (1 - offset_percent))
+            txt_clip = txt_clip.set_position(('center', y_pos))
+        elif h_align == "center" and v_align == "bottom":
+            # Position at top of bottom third (2/3 down from top)
+            txt_clip = txt_clip.set_position(('center', int(video_size[1] * 2 / 3)))
         elif h_align == "center" and v_align == "center":
             txt_clip = txt_clip.set_position(('center', video_size[1] // 2))
         elif h_align == "center" and v_align == "top":
